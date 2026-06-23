@@ -9,7 +9,26 @@ async function getSessionToken(): Promise<string> {
 
 export async function connectInstagram() {
   const token = await getSessionToken();
-  window.location.href = `/api/instagram/auth?token=${encodeURIComponent(token)}`;
+  const url = `/api/instagram/auth?token=${encodeURIComponent(token)}`;
+
+  const res = await fetch(url, { redirect: "manual" });
+
+  if (res.status === 503 || res.status === 401) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      (data as { error?: string }).error ??
+        "Instagram no configurado. Añade INSTAGRAM_APP_ID y INSTAGRAM_APP_SECRET en Railway."
+    );
+  }
+
+  const location = res.headers.get("Location");
+  if (location) {
+    window.location.href = location;
+    return;
+  }
+
+  // Fallback for browsers that follow redirects differently
+  window.location.href = url;
 }
 
 export async function syncInstagramMetrics() {

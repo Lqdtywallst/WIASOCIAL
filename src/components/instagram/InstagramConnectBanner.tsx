@@ -136,19 +136,16 @@ export function InstagramConnectBanner() {
             )}
           </div>
         </div>
-        {configured ? (
-          <Button onClick={connectInstagram}>
-            <Instagram className="h-4 w-4" />
-            {t.instagram.connect}
-          </Button>
-        ) : (
-          <Link href="/settings">
-            <Button>
-              <Instagram className="h-4 w-4" />
-              {t.instagram.connect}
-            </Button>
-          </Link>
-        )}
+        <Button onClick={async () => {
+          try {
+            await connectInstagram();
+          } catch (e) {
+            setToast(e instanceof Error ? e.message : "Error");
+          }
+        }}>
+          <Instagram className="h-4 w-4" />
+          {t.instagram.connect}
+        </Button>
       </div>
       {toast && <p className="mt-3 text-sm text-lime">{toast}</p>}
     </Card>

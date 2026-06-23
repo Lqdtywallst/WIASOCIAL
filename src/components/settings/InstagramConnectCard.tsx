@@ -23,6 +23,9 @@ export function InstagramConnectCard() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  const [connecting, setConnecting] = useState(false);
+  const [setupMessage, setSetupMessage] = useState<string | null>(null);
+
   const load = async () => {
     setLoading(true);
     try {
@@ -37,6 +40,15 @@ export function InstagramConnectCard() {
   useEffect(() => { load(); }, []);
 
   useEffect(() => {
+    fetch("/api/instagram/status")
+      .then((r) => r.json())
+      .then((d: { message?: string; ready?: boolean }) => {
+        if (!d.ready && d.message) setSetupMessage(d.message);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
     const status = searchParams.get("instagram");
     const msg = searchParams.get("message");
     const user = searchParams.get("user");
@@ -48,6 +60,18 @@ export function InstagramConnectCard() {
       setError(msg ? decodeURIComponent(msg) : (locale === "es" ? "Error al conectar Instagram" : "Instagram connection failed"));
     }
   }, [searchParams, t, locale]);
+
+  const handleConnect = async () => {
+    setConnecting(true);
+    setError("");
+    try {
+      await connectInstagram();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al conectar");
+    } finally {
+      setConnecting(false);
+    }
+  };
 
   const handleSync = async () => {
     setSyncing(true);
@@ -114,8 +138,8 @@ export function InstagramConnectCard() {
 
       <div className="mt-4 flex flex-wrap gap-2">
         {!connection ? (
-          <Button onClick={connectInstagram} disabled={!configured}>
-            <Instagram className="h-4 w-4" />
+          <Button onClick={handleConnect} disabled={connecting}>
+            {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Instagram className="h-4 w-4" />}
             {t.instagram.connect}
           </Button>
         ) : (
@@ -133,8 +157,8 @@ export function InstagramConnectCard() {
       </div>
 
       {!configured && (
-        <div className="mt-3 space-y-1 text-xs text-muted">
-          <p>{t.instagram.configureMeta}</p>
+        <div className="mt-3 space-y-1 text-xs text-amber-400">
+          <p>{setupMessage ?? t.instagram.configureMeta}</p>
           <p>{t.instagram.setupHint}</p>
         </div>
       )}
