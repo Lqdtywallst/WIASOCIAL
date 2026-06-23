@@ -13,6 +13,7 @@ import { formatNumber, formatDate } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n/LanguageProvider";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchPosts, createPost } from "@/lib/db";
+import { fetchInstagramConnection, syncInstagramMetrics } from "@/lib/instagram-client";
 import type { PostPerformance } from "@/types";
 
 export default function AnalyticsPage() {
@@ -21,12 +22,15 @@ export default function AnalyticsPage() {
   const [posts, setPosts] = useState<PostPerformance[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [igConnected, setIgConnected] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [newPost, setNewPost] = useState({ title: "", type: "reel" as PostPerformance["type"], views: "", likes: "", comments: "", saves: "", shares: "", leadsGenerated: "" });
 
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     setPosts(await fetchPosts(user.id));
+    setIgConnected(Boolean(await fetchInstagramConnection()));
     setLoading(false);
   }, [user]);
 
@@ -36,6 +40,16 @@ export default function AnalyticsPage() {
     views: acc.views + p.views, likes: acc.likes + p.likes, comments: acc.comments + p.comments,
     saves: acc.saves + p.saves, shares: acc.shares + p.shares, leads: acc.leads + p.leadsGenerated,
   }), { views: 0, likes: 0, comments: 0, saves: 0, shares: 0, leads: 0 });
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      await syncInstagramMetrics();
+      await load();
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleAddPost = async () => {
     if (!user || !newPost.title) return;
@@ -61,7 +75,17 @@ export default function AnalyticsPage() {
   return (
     <div>
       <PageHeader title={t.analytics.title} description={t.analytics.description}
-        action={<Button onClick={() => setShowAddForm(!showAddForm)}><Plus className="h-4 w-4" />{t.analytics.logPost}</Button>} />
+        action={
+          <div className="flex gap-2">
+            {igConnected && (
+              <Button variant="secondary" onClick={handleSync} disabled={syncing}>
+                {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Sync Instagram
+              </Button>
+            )}
+            <Button onClick={() => setShowAddForm(!showAddForm)}><Plus className="h-4 w-4" />{t.analytics.logPost}</Button>
+          </div>
+        } />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard title={t.analytics.totalViews} value={totals.views} icon={Eye} />
         <StatCard title={t.analytics.totalLikes} value={totals.likes} icon={Heart} />

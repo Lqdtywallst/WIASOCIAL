@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Settings, Save, Key, Database, Globe, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchSettings, saveSettings } from "@/lib/db";
 import { isOpenAIConfigured } from "@/lib/openai";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { InstagramConnectCard } from "@/components/settings/InstagramConnectCard";
 import type { ContentGoal, ContentTone, UserSettings } from "@/types";
 
 const defaults: UserSettings = {
@@ -88,6 +89,9 @@ export default function SettingsPage() {
                   {supabaseOk ? "✓ Conectado" : t.settings.configureEnv}
                 </Badge>
               </div>
+              <Suspense fallback={<div className="h-24 animate-pulse rounded-lg bg-surface-elevated" />}>
+                <InstagramConnectCard />
+              </Suspense>
             </div>
           </Card>
           <Card>

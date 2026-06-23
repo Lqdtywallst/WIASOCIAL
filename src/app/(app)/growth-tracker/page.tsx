@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n/LanguageProvider";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchFollowerSnapshots, logFollowers } from "@/lib/db";
+import { fetchInstagramConnection, syncInstagramMetrics } from "@/lib/instagram-client";
 
 export default function GrowthTrackerPage() {
   const { t, locale } = useTranslation();
@@ -19,10 +20,13 @@ export default function GrowthTrackerPage() {
   const [loading, setLoading] = useState(true);
   const [count, setCount] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [igConnected, setIgConnected] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
     setSnapshots(await fetchFollowerSnapshots(user.id));
+    setIgConnected(Boolean(await fetchInstagramConnection()));
     setLoading(false);
   }, [user]);
 
@@ -34,6 +38,16 @@ export default function GrowthTrackerPage() {
   const weekGain = latest && weekAgo ? latest.followers - weekAgo.followers : 0;
   const monthGain = latest && monthAgo ? latest.followers - monthAgo.followers : 0;
   const maxFollowers = Math.max(...snapshots.map((s) => s.followers), 1);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      await syncInstagramMetrics();
+      await load();
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleLog = async () => {
     if (!user || !count) return;
@@ -50,7 +64,17 @@ export default function GrowthTrackerPage() {
   return (
     <div>
       <PageHeader title={t.growthTracker.title} description={t.growthTracker.description}
-        action={<Button onClick={() => setShowForm(!showForm)}><Plus className="h-4 w-4" />{t.growthTracker.logFollowers}</Button>} />
+        action={
+          <div className="flex gap-2">
+            {igConnected && (
+              <Button variant="secondary" onClick={handleSync} disabled={syncing}>
+                {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {locale === "es" ? "Sync Instagram" : "Sync Instagram"}
+              </Button>
+            )}
+            <Button onClick={() => setShowForm(!showForm)}><Plus className="h-4 w-4" />{t.growthTracker.logFollowers}</Button>
+          </div>
+        } />
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard title={t.growthTracker.current} value={latest?.followers ?? 0} icon={TrendingUp} trendUp />
         <StatCard title={t.growthTracker.thisWeek} value={`+${weekGain}`} icon={TrendingUp} trendUp />
