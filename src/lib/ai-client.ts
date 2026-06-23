@@ -1,4 +1,5 @@
 import { getSupabase } from "@/lib/supabase";
+import type { GrowthRadarReport } from "@/types/growth-radar";
 
 export async function callAI(action: string, params: Record<string, unknown> = {}, locale = "es") {
   const res = await fetch("/api/ai", {
@@ -40,6 +41,17 @@ export interface LeadIQResult {
   reasoning: string;
   nextAction: string;
   dmTemplate: string;
+}
+
+export interface GrowthRadarResponse {
+  report: GrowthRadarReport | null;
+  reportWeek: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  cached?: boolean;
+  setupRequired?: boolean;
+  message?: string;
+  persistenceWarning?: string | null;
 }
 
 export async function fetchCoachMessages() {
@@ -117,4 +129,29 @@ export async function scoreLead(lead: Record<string, unknown>, locale = "es") {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Error al puntuar lead");
   return data as LeadIQResult;
+}
+
+export async function fetchGrowthRadar() {
+  const token = await getToken();
+  const res = await fetch("/api/growth-radar", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Error al cargar Radar IA");
+  return data as GrowthRadarResponse;
+}
+
+export async function generateGrowthRadar(locale = "es", force = false) {
+  const token = await getToken();
+  const res = await fetch("/api/growth-radar", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ locale, force }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Error al generar Radar IA");
+  return data as GrowthRadarResponse;
 }

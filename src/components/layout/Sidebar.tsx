@@ -25,6 +25,7 @@ import {
   ClipboardCheck,
   Bot,
   Instagram,
+  Radar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n/LanguageProvider";
@@ -72,6 +73,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     {
       label: t.nav.sectionAI,
       items: [
+        { name: t.nav.growthRadar, href: "/growth-radar", icon: Radar },
         { name: t.nav.aiCoach, href: "/ai-coach", icon: Bot },
       ],
     },

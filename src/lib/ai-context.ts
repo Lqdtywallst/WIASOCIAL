@@ -5,6 +5,19 @@ import {
   fetchPosts,
   fetchSettings,
 } from "@/lib/db";
+import type { GrowthRadarReport } from "@/types/growth-radar";
+
+type NumericInsightMap = Record<string, number>;
+
+interface MediaContextRow {
+  caption: string | null;
+  media_type: string | null;
+  like_count: number | null;
+  comments_count: number | null;
+  insights: NumericInsightMap | null;
+  comments?: unknown;
+  posted_at?: string | null;
+}
 
 export interface UserAIContext {
   settings: {
@@ -24,16 +37,35 @@ export interface UserAIContext {
     posts?: number;
     accountInsights?: { name: string; value: number }[];
     topPosts?: { caption: string; likes: number; comments: number; reach: number }[];
+    audienceSignals?: {
+      topOnlineHours: { hour: string; value: number }[];
+      demographicHighlights: string[];
+    };
   } | null;
   stats: {
     totalLeads: number;
     callsBooked: number;
     clients: number;
+    leadConversionRate: number;
     weekFollowerGain: number;
     totalPosts: number;
     bestPostViews: number;
     latestAuditScore: number | null;
   };
+  growthSignals: {
+    bestFormats: { format: string; posts: number; avgEngagement: number; avgViews: number }[];
+    topContent: { title: string; type: string; views: number; saves: number; leadsGenerated: number }[];
+    contentGaps: string[];
+    leadSignals: { label: string; value: number | string }[];
+    instagramSignals: { label: string; value: number | string }[];
+  };
+  latestGrowthRadar: {
+    reportWeek: string;
+    opportunityScore: number;
+    headline: string;
+    biggestOpportunity: string;
+    topRecommendations: string[];
+  } | null;
 }
 
 export async function buildUserAIContext(userId: string, accessToken: string): Promise<UserAIContext> {
@@ -48,11 +80,13 @@ export async function buildUserAIContext(userId: string, accessToken: string): P
 
   let latestAuditScore: number | null = null;
   let instagramContext: UserAIContext["instagram"] = null;
+  let instagramSignals: UserAIContext["growthSignals"]["instagramSignals"] = [];
+  let latestGrowthRadar: UserAIContext["latestGrowthRadar"] = null;
 
   try {
     const { data: igConnection } = await sb
       .from("instagram_connections")
-      .select("ig_username, profile_data, account_insights, followers_count, follows_count, media_count")
+      .select("ig_username, profile_data, account_insights, audience_insights, followers_count, follows_count, media_count")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -67,10 +101,20 @@ export async function buildUserAIContext(userId: string, accessToken: string): P
 
       const { data: topMedia } = await sb
         .from("instagram_media_items")
-        .select("caption, like_count, comments_count, insights")
+        .select("caption, media_type, like_count, comments_count, insights, comments, posted_at")
         .eq("user_id", userId)
         .order("like_count", { ascending: false })
-        .limit(5);
+        .limit(25);
+
+      const mediaRows = (topMedia ?? []) as MediaContextRow[];
+      const accountInsights = normalizeInsights(igConnection.account_insights);
+      const audienceSignals = buildAudienceSignals(igConnection.audience_insights);
+      instagramSignals = [
+        { label: "followers", value: (igConnection.followers_count as number) ?? profile?.followersCount ?? 0 },
+        { label: "following", value: (igConnection.follows_count as number) ?? profile?.followsCount ?? 0 },
+        { label: "media_count", value: (igConnection.media_count as number) ?? profile?.mediaCount ?? 0 },
+        ...accountInsights.slice(0, 5).map((i) => ({ label: i.name, value: i.value })),
+      ];
 
       instagramContext = {
         connected: true,
@@ -79,12 +123,13 @@ export async function buildUserAIContext(userId: string, accessToken: string): P
         followers: (igConnection.followers_count as number) ?? profile?.followersCount,
         following: (igConnection.follows_count as number) ?? profile?.followsCount,
         posts: (igConnection.media_count as number) ?? profile?.mediaCount,
-        accountInsights: ((igConnection.account_insights as { name: string; value: number }[]) ?? []).slice(0, 8),
-        topPosts: (topMedia ?? []).map((m) => ({
+        accountInsights: accountInsights.slice(0, 8),
+        audienceSignals,
+        topPosts: mediaRows.slice(0, 5).map((m) => ({
           caption: ((m.caption as string) ?? "").slice(0, 120),
-          likes: m.like_count as number,
-          comments: m.comments_count as number,
-          reach: ((m.insights as Record<string, number>)?.reach) ?? 0,
+          likes: m.like_count ?? 0,
+          comments: m.comments_count ?? 0,
+          reach: m.insights?.reach ?? 0,
         })),
       };
     }
@@ -105,10 +150,46 @@ export async function buildUserAIContext(userId: string, accessToken: string): P
     latestAuditScore = null;
   }
 
+  try {
+    const { data } = await sb
+      .from("growth_radar_reports")
+      .select("report_week, opportunity_score, report")
+      .eq("user_id", userId)
+      .order("report_week", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const report = data?.report as GrowthRadarReport | undefined;
+    if (data && report) {
+      latestGrowthRadar = {
+        reportWeek: data.report_week as string,
+        opportunityScore: (data.opportunity_score as number) ?? report.opportunityScore,
+        headline: report.headline,
+        biggestOpportunity: report.biggestOpportunity,
+        topRecommendations: report.recommendations?.slice(0, 3).map((r) => r.title) ?? [],
+      };
+    }
+  } catch {
+    latestGrowthRadar = null;
+  }
+
   const latest = snapshots[snapshots.length - 1];
   const prev = snapshots[snapshots.length - 2];
   const weekFollowerGain = latest && prev ? latest.followers - prev.followers : 0;
   const bestPost = [...posts].sort((a, b) => b.views - a.views)[0];
+  const leadConversionRate = leads.length > 0 ? Math.round((leads.filter((l) => l.status === "client").length / leads.length) * 100) : 0;
+  const bestFormats = buildFormatSignals(posts);
+  const topContent = [...posts]
+    .sort((a, b) => (b.views + b.saves * 4 + b.leadsGenerated * 20) - (a.views + a.saves * 4 + a.leadsGenerated * 20))
+    .slice(0, 5)
+    .map((p) => ({
+      title: p.title,
+      type: p.type,
+      views: p.views,
+      saves: p.saves,
+      leadsGenerated: p.leadsGenerated,
+    }));
+  const contentGaps = buildContentGaps(posts, Boolean(instagramContext?.connected));
 
   return {
     settings: settings
@@ -126,10 +207,109 @@ export async function buildUserAIContext(userId: string, accessToken: string): P
       totalLeads: leads.length,
       callsBooked: leads.filter((l) => l.status === "call_booked").length,
       clients: leads.filter((l) => l.status === "client").length,
+      leadConversionRate,
       weekFollowerGain,
       totalPosts: posts.length,
       bestPostViews: bestPost?.views ?? 0,
       latestAuditScore,
     },
+    growthSignals: {
+      bestFormats,
+      topContent,
+      contentGaps,
+      leadSignals: [
+        { label: "total_leads", value: leads.length },
+        { label: "calls_booked", value: leads.filter((l) => l.status === "call_booked").length },
+        { label: "clients", value: leads.filter((l) => l.status === "client").length },
+        { label: "conversion_rate_percent", value: leadConversionRate },
+      ],
+      instagramSignals,
+    },
+    latestGrowthRadar,
   };
+}
+
+function normalizeInsights(value: unknown): { name: string; value: number }[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => ({
+        name: String((item as { name?: unknown }).name ?? ""),
+        value: Number((item as { value?: unknown }).value ?? 0),
+      }))
+      .filter((item) => item.name);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([name, raw]) => ({ name, value: Number(raw) || 0 }))
+      .filter((item) => Number.isFinite(item.value));
+  }
+
+  return [];
+}
+
+function buildAudienceSignals(value: unknown): UserAIContext["instagram"] extends infer T
+  ? T extends { audienceSignals?: infer S } ? S : never
+  : never {
+  const data = (value ?? {}) as Record<string, unknown>;
+  const onlineFollowers = (data.online_followers ?? data.onlineFollowers ?? {}) as Record<string, unknown>;
+  const topOnlineHours = Object.entries(onlineFollowers)
+    .map(([hour, raw]) => ({ hour, value: Number(raw) || 0 }))
+    .filter((item) => item.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
+
+  const demographicHighlights = Object.entries(data)
+    .filter(([key, raw]) => key !== "online_followers" && key !== "onlineFollowers" && raw && typeof raw === "object")
+    .slice(0, 3)
+    .map(([key, raw]) => {
+      const entries = Object.entries(raw as Record<string, unknown>)
+        .sort((a, b) => Number(b[1]) - Number(a[1]))
+        .slice(0, 2)
+        .map(([label, count]) => `${label}: ${count}`)
+        .join(", ");
+      return `${key}: ${entries}`;
+    })
+    .filter(Boolean);
+
+  return { topOnlineHours, demographicHighlights };
+}
+
+function buildFormatSignals(posts: Awaited<ReturnType<typeof fetchPosts>>): UserAIContext["growthSignals"]["bestFormats"] {
+  const byFormat = new Map<string, { posts: number; engagement: number; views: number }>();
+
+  for (const post of posts) {
+    const current = byFormat.get(post.type) ?? { posts: 0, engagement: 0, views: 0 };
+    current.posts += 1;
+    current.engagement += post.likes + post.comments + post.saves + post.shares;
+    current.views += post.views;
+    byFormat.set(post.type, current);
+  }
+
+  return [...byFormat.entries()]
+    .map(([format, data]) => ({
+      format,
+      posts: data.posts,
+      avgEngagement: Math.round(data.engagement / Math.max(data.posts, 1)),
+      avgViews: Math.round(data.views / Math.max(data.posts, 1)),
+    }))
+    .sort((a, b) => b.avgEngagement - a.avgEngagement)
+    .slice(0, 4);
+}
+
+function buildContentGaps(posts: Awaited<ReturnType<typeof fetchPosts>>, instagramConnected: boolean): string[] {
+  const gaps: string[] = [];
+  const formats = new Set(posts.map((post) => post.type));
+  const recentPosts = posts.filter((post) => {
+    const postedAt = new Date(post.postedAt).getTime();
+    return Number.isFinite(postedAt) && Date.now() - postedAt < 14 * 24 * 60 * 60 * 1000;
+  });
+
+  if (!instagramConnected) gaps.push("Instagram is not connected, so recommendations rely on manual data.");
+  if (posts.length < 5) gaps.push("Not enough tracked posts to confidently identify repeatable winners.");
+  if (!formats.has("reel")) gaps.push("No reels tracked recently; short-form reach opportunities may be underused.");
+  if (!formats.has("carousel")) gaps.push("No carousels tracked recently; save-driven authority content may be missing.");
+  if (recentPosts.length < 3) gaps.push("Posting volume is light for the last 14 days.");
+
+  return gaps.slice(0, 5);
 }

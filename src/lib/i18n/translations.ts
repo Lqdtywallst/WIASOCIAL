@@ -26,6 +26,7 @@ export const translations = {
       analytics: "Analíticas",
       settings: "Configuración",
       sectionAI: "Inteligencia IA",
+      growthRadar: "Radar IA",
       aiCoach: "AI Growth Coach",
       legalTitle: "Crecimiento legal",
       legalDesc:
@@ -484,6 +485,7 @@ export const translations = {
       analytics: "Analytics",
       settings: "Settings",
       sectionAI: "AI Intelligence",
+      growthRadar: "AI Growth Radar",
       aiCoach: "AI Growth Coach",
       legalTitle: "Legal Growth Only",
       legalDesc:

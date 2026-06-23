@@ -13,6 +13,7 @@ import { useTranslation } from "@/lib/i18n/LanguageProvider";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchLeads, fetchPosts, fetchFollowUps, fetchFollowerSnapshots } from "@/lib/db";
 import { DailyBriefCard } from "@/components/ai/DailyBriefCard";
+import { GrowthRadarCard } from "@/components/ai/GrowthRadarCard";
 import { InstagramConnectBanner } from "@/components/instagram/InstagramConnectBanner";
 
 export default function DashboardPage() {
@@ -67,7 +68,8 @@ export default function DashboardPage() {
         <StatCard title="Seguidores esta semana" value={`+${weekGain}`} icon={TrendingUp} trend={`+${weekGain} ganados`} trendUp />
       </div>
 
-      <div className="mt-8">
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <GrowthRadarCard />
         <DailyBriefCard />
       </div>
 
