@@ -13,13 +13,33 @@ export default function AuthCallbackPage() {
     const handleAuth = async () => {
       const sb = getSupabase();
       const params = new URLSearchParams(window.location.search);
+      const authError = params.get("error_description") || params.get("error");
+
+      if (authError) {
+        setMessage(decodeURIComponent(authError));
+        setTimeout(() => router.replace("/login"), 4000);
+        return;
+      }
+
       const code = params.get("code");
+      const tokenHash = params.get("token_hash");
+      const type = params.get("type");
 
       if (code) {
         const { error } = await sb.auth.exchangeCodeForSession(code);
         if (error) {
-          setMessage("Error al verificar. Inicia sesión manualmente.");
-          setTimeout(() => router.replace("/login"), 3000);
+          setMessage(error.message);
+          setTimeout(() => router.replace("/login"), 4000);
+          return;
+        }
+      } else if (tokenHash && type) {
+        const { error } = await sb.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: type as "signup" | "email" | "recovery" | "invite" | "email_change",
+        });
+        if (error) {
+          setMessage(error.message);
+          setTimeout(() => router.replace("/login"), 4000);
           return;
         }
       }

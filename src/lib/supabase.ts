@@ -20,7 +20,12 @@ export function getSupabase(): SupabaseClient {
     throw new Error("Supabase is not configured. Add credentials to .env.local");
   }
   if (!client) {
-    client = createClient(supabaseUrl, supabaseAnonKey);
+    client = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        detectSessionInUrl: true,
+        persistSession: true,
+      },
+    });
   }
   return client;
 }
