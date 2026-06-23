@@ -1,0 +1,26 @@
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+
+let client: SupabaseClient | null = null;
+
+export function isSupabaseConfigured(): boolean {
+  return (
+    supabaseUrl !== "" &&
+    !supabaseUrl.includes("your_supabase") &&
+    (supabaseUrl.startsWith("http://") || supabaseUrl.startsWith("https://")) &&
+    supabaseAnonKey !== "" &&
+    !supabaseAnonKey.includes("your_supabase")
+  );
+}
+
+export function getSupabase(): SupabaseClient {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured. Add credentials to .env.local");
+  }
+  if (!client) {
+    client = createClient(supabaseUrl, supabaseAnonKey);
+  }
+  return client;
+}
