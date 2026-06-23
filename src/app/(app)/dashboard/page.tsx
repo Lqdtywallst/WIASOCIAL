@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Users, Phone, TrendingUp, Calendar, Lightbulb, ArrowRight, Target, Hash, UserCheck, Clock, Layers, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -13,6 +13,7 @@ import { useTranslation } from "@/lib/i18n/LanguageProvider";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchLeads, fetchPosts, fetchFollowUps, fetchFollowerSnapshots } from "@/lib/db";
 import { DailyBriefCard } from "@/components/ai/DailyBriefCard";
+import { InstagramConnectBanner } from "@/components/instagram/InstagramConnectBanner";
 
 export default function DashboardPage() {
   const { t, locale } = useTranslation();
@@ -51,7 +52,11 @@ export default function DashboardPage() {
       <PageHeader title={t.dashboard.title} description={t.dashboard.description}
         action={<Link href="/content-generator"><Button><Lightbulb className="h-4 w-4" />{t.dashboard.generateContent}</Button></Link>} />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <Suspense fallback={<div className="h-24 animate-pulse rounded-xl bg-surface-elevated" />}>
+        <InstagramConnectBanner />
+      </Suspense>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard title={t.dashboard.totalLeads} value={totalLeads} icon={Users} trendUp />
         <StatCard title={t.dashboard.callsBooked} value={callsBooked} icon={Phone} trendUp />
         <StatCard title={t.dashboard.activeClients} value={clients} icon={TrendingUp} />

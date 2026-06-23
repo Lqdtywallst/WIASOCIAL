@@ -5,13 +5,9 @@ import {
   exchangeForLongLivedToken,
   findInstagramBusinessAccount,
   getAppUrl,
-  getInstagramRedirectUri,
   verifyOAuthState,
 } from "@/lib/meta";
-
-function adminSupabase() {
-  return getSupabaseAdmin();
-}
+import { syncInstagramDataForUser } from "@/lib/instagram-sync";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -33,13 +29,14 @@ export async function GET(request: Request) {
   }
 
   try {
+    const sb = getSupabaseAdmin();
     const short = await exchangeCodeForToken(code);
     const long = await exchangeForLongLivedToken(short.access_token);
     const account = await findInstagramBusinessAccount(long.access_token);
 
     const expiresAt = new Date(Date.now() + long.expires_in * 1000).toISOString();
 
-    const { error: dbError } = await adminSupabase()
+    const { error: dbError } = await sb
       .from("instagram_connections")
       .upsert({
         user_id: userId,
@@ -55,7 +52,7 @@ export async function GET(request: Request) {
 
     if (dbError) throw dbError;
 
-    await adminSupabase()
+    await sb
       .from("user_settings")
       .upsert({
         user_id: userId,
@@ -63,7 +60,23 @@ export async function GET(request: Request) {
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" });
 
-    return NextResponse.redirect(`${getAppUrl()}/settings?instagram=connected&user=${account.igUsername}`);
+    let synced = false;
+    try {
+      await syncInstagramDataForUser(sb, userId, {
+        ig_user_id: account.igUserId,
+        access_token: account.pageAccessToken,
+      });
+      synced = true;
+    } catch {
+      synced = false;
+    }
+
+    const params = new URLSearchParams({
+      instagram: "connected",
+      user: account.igUsername,
+      synced: synced ? "1" : "0",
+    });
+    return NextResponse.redirect(`${getAppUrl()}/dashboard?${params}`);
   } catch (err) {
     const message = err instanceof Error ? err.message : "connection_failed";
     return NextResponse.redirect(`${getAppUrl()}/settings?instagram=error&message=${encodeURIComponent(message)}`);

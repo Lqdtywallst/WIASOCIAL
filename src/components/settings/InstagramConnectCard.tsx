@@ -15,15 +15,13 @@ import { isMetaConfiguredPublic } from "@/lib/meta";
 import { useTranslation } from "@/lib/i18n/LanguageProvider";
 
 export function InstagramConnectCard() {
-  const { locale } = useTranslation();
+  const { t, locale } = useTranslation();
   const searchParams = useSearchParams();
   const [connection, setConnection] = useState<Awaited<ReturnType<typeof fetchInstagramConnection>>>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-
-  const es = locale === "es";
 
   const load = async () => {
     setLoading(true);
@@ -43,13 +41,13 @@ export function InstagramConnectCard() {
     const msg = searchParams.get("message");
     const user = searchParams.get("user");
     if (status === "connected" && user) {
-      setMessage(es ? `Instagram @${user} conectado` : `Instagram @${user} connected`);
+      setMessage(t.instagram.connected.replace("{user}", user));
       load();
     }
     if (status === "error") {
-      setError(msg ? decodeURIComponent(msg) : (es ? "Error al conectar Instagram" : "Instagram connection failed"));
+      setError(msg ? decodeURIComponent(msg) : (locale === "es" ? "Error al conectar Instagram" : "Instagram connection failed"));
     }
-  }, [searchParams, es]);
+  }, [searchParams, t, locale]);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -58,9 +56,9 @@ export function InstagramConnectCard() {
     try {
       const result = await syncInstagramMetrics();
       setMessage(
-        es
-          ? `Sincronizado: @${result.username} · ${result.followers} seguidores · ${result.postsImported} posts`
-          : `Synced: @${result.username} · ${result.followers} followers · ${result.postsImported} posts`
+        t.instagram.syncSuccess
+          .replace("{followers}", String(result.followers))
+          .replace("{posts}", String(result.postsImported))
       );
       await load();
     } catch (e) {
@@ -75,7 +73,7 @@ export function InstagramConnectCard() {
     try {
       await disconnectInstagram();
       setConnection(null);
-      setMessage(es ? "Instagram desconectado" : "Instagram disconnected");
+      setMessage(locale === "es" ? "Instagram desconectado" : "Instagram disconnected");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     }
@@ -84,15 +82,13 @@ export function InstagramConnectCard() {
   const configured = isMetaConfiguredPublic();
 
   return (
-    <div className="rounded-lg border border-border bg-surface-elevated p-4">
+    <div className="rounded-lg border border-lime/20 bg-lime/5 p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Instagram className="h-5 w-5 text-lime" />
           <div>
-            <p className="text-sm font-medium">Instagram API</p>
-            <p className="text-xs text-muted">
-              {es ? "Importa seguidores y métricas de posts (solo lectura)" : "Import followers and post metrics (read-only)"}
-            </p>
+            <p className="text-sm font-medium">Instagram</p>
+            <p className="text-xs text-muted">{t.instagram.connectDesc}</p>
           </div>
         </div>
         {loading ? (
@@ -101,15 +97,15 @@ export function InstagramConnectCard() {
           <Badge className="bg-lime/20 text-lime border-lime/30">@{connection.username}</Badge>
         ) : (
           <Badge className={configured ? "bg-amber-500/20 text-amber-400 border-amber-500/30" : "bg-red-500/20 text-red-400 border-red-500/30"}>
-            {configured ? (es ? "No conectado" : "Not connected") : (es ? "Configurar Meta" : "Configure Meta")}
+            {configured ? t.instagram.notConnected : t.instagram.configureMeta}
           </Badge>
         )}
       </div>
 
       {connection && (
         <p className="mt-3 text-xs text-muted">
-          {connection.followersCount.toLocaleString()} {es ? "seguidores" : "followers"} · {connection.mediaCount} posts
-          {connection.lastSyncedAt && ` · ${es ? "Última sync" : "Last sync"}: ${new Date(connection.lastSyncedAt).toLocaleString(locale === "es" ? "es-ES" : "en-US")}`}
+          {connection.followersCount.toLocaleString()} {t.instagram.followers} · {connection.mediaCount} {t.instagram.posts}
+          {connection.lastSyncedAt && ` · ${new Date(connection.lastSyncedAt).toLocaleString(locale === "es" ? "es-ES" : "en-US")}`}
         </p>
       )}
 
@@ -120,28 +116,27 @@ export function InstagramConnectCard() {
         {!connection ? (
           <Button onClick={connectInstagram} disabled={!configured}>
             <Instagram className="h-4 w-4" />
-            {es ? "Conectar Instagram" : "Connect Instagram"}
+            {t.instagram.connect}
           </Button>
         ) : (
           <>
             <Button onClick={handleSync} disabled={syncing}>
               {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              {es ? "Sincronizar métricas" : "Sync metrics"}
+              {t.instagram.syncMetrics}
             </Button>
             <Button variant="ghost" onClick={handleDisconnect}>
               <Unplug className="h-4 w-4" />
-              {es ? "Desconectar" : "Disconnect"}
+              {t.instagram.disconnect}
             </Button>
           </>
         )}
       </div>
 
       {!configured && (
-        <p className="mt-3 text-xs text-muted">
-          {es
-            ? "Añade META_APP_ID y META_APP_SECRET en Railway. Guía: INSTAGRAM_SETUP.md"
-            : "Add META_APP_ID and META_APP_SECRET in Railway. See INSTAGRAM_SETUP.md"}
-        </p>
+        <div className="mt-3 space-y-1 text-xs text-muted">
+          <p>{t.instagram.configureMeta}</p>
+          <p>{t.instagram.setupHint}</p>
+        </div>
       )}
     </div>
   );
