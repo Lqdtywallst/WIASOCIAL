@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Instagram, Loader2, RefreshCw, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, RefreshCw, CheckCircle2, AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { InstagramBrandIcon } from "@/components/icons/InstagramBrandIcon";
 import {
   connectInstagram,
   fetchInstagramConnection,
@@ -83,7 +84,7 @@ export function InstagramConnectBanner() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-              <Instagram className="h-6 w-6 text-lime" />
+              <InstagramBrandIcon className="h-7 w-7" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -122,8 +123,8 @@ export function InstagramConnectBanner() {
     <Card className="border-amber-500/20 bg-amber-500/5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10">
-            <Instagram className="h-6 w-6 text-amber-400" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10">
+            <InstagramBrandIcon className="h-7 w-7" />
           </div>
           <div>
             <p className="font-semibold">{t.instagram.connectTitle}</p>
@@ -143,7 +144,7 @@ export function InstagramConnectBanner() {
             setToast(e instanceof Error ? e.message : "Error");
           }
         }}>
-          <Instagram className="h-4 w-4" />
+          <InstagramBrandIcon className="h-4 w-4" />
           {t.instagram.connect}
         </Button>
       </div>

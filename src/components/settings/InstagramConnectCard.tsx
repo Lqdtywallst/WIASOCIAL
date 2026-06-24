@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Instagram, Loader2, RefreshCw, Unplug } from "lucide-react";
+import { Loader2, RefreshCw, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { InstagramBrandIcon } from "@/components/icons/InstagramBrandIcon";
 import {
   connectInstagram,
   disconnectInstagram,
@@ -109,7 +110,7 @@ export function InstagramConnectCard() {
     <div className="rounded-lg border border-lime/20 bg-lime/5 p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Instagram className="h-5 w-5 text-lime" />
+          <InstagramBrandIcon />
           <div>
             <p className="text-sm font-medium">Instagram</p>
             <p className="text-xs text-muted">{t.instagram.connectDesc}</p>
@@ -139,7 +140,7 @@ export function InstagramConnectCard() {
       <div className="mt-4 flex flex-wrap gap-2">
         {!connection ? (
           <Button onClick={handleConnect} disabled={connecting}>
-            {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Instagram className="h-4 w-4" />}
+            {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <InstagramBrandIcon className="h-4 w-4" />}
             {t.instagram.connect}
           </Button>
         ) : (
