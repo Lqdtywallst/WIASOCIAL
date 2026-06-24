@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAccessTokenFromRequest, getUserFromAccessToken } from "@/lib/auth-server";
+import { enforceUserRateLimit, getAccessTokenFromRequest, getUserFromAccessToken } from "@/lib/auth-server";
 import { getSupabaseForUser } from "@/lib/supabase-admin";
 import { syncInstagramDataForUser } from "@/lib/instagram-sync";
 
@@ -9,6 +9,8 @@ export async function POST(request: Request) {
   if (!user || !token) {
     return NextResponse.json({ error: "Sesión inválida" }, { status: 401 });
   }
+  const limited = enforceUserRateLimit(request, user.id, "instagram-sync", 4, 60 * 60 * 1000);
+  if (limited) return limited;
 
   const sb = getSupabaseForUser(token);
   const { data: connection, error } = await sb

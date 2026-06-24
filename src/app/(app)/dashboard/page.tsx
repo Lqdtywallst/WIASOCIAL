@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { Users, Phone, TrendingUp, Calendar, Lightbulb, ArrowRight, Target, Hash, UserCheck, Clock, Layers, Loader2, Megaphone, Workflow } from "lucide-react";
+import { Users, Phone, TrendingUp, Calendar, Lightbulb, ArrowRight, Target, Hash, UserCheck, Clock, Layers, Loader2, Megaphone, Workflow, CheckCircle2, Settings, Instagram, Radar } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
@@ -11,10 +11,11 @@ import { Button } from "@/components/ui/Button";
 import { formatNumber, formatDate, isToday } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n/LanguageProvider";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchLeads, fetchPosts, fetchFollowUps, fetchFollowerSnapshots } from "@/lib/db";
+import { fetchLeads, fetchPosts, fetchFollowUps, fetchFollowerSnapshots, fetchSettings } from "@/lib/db";
 import { DailyBriefCard } from "@/components/ai/DailyBriefCard";
 import { GrowthRadarCard } from "@/components/ai/GrowthRadarCard";
 import { InstagramConnectBanner } from "@/components/instagram/InstagramConnectBanner";
+import { fetchInstagramConnection } from "@/lib/instagram-client";
 
 export default function DashboardPage() {
   const { t, locale } = useTranslation();
@@ -26,12 +27,19 @@ export default function DashboardPage() {
   const [followUpsToday, setFollowUpsToday] = useState<{ leadUsername: string; note: string }[]>([]);
   const [bestPost, setBestPost] = useState<{ title: string; postedAt: string; type: string; views: number; saves: number; leadsGenerated: number } | null>(null);
   const [weekGain, setWeekGain] = useState(0);
+  const [brandConfigured, setBrandConfigured] = useState(false);
+  const [instagramConnected, setInstagramConnected] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const [leads, posts, followUps, snapshots] = await Promise.all([
-        fetchLeads(user.id), fetchPosts(user.id), fetchFollowUps(user.id), fetchFollowerSnapshots(user.id),
+      const [leads, posts, followUps, snapshots, settings, instagram] = await Promise.all([
+        fetchLeads(user.id),
+        fetchPosts(user.id),
+        fetchFollowUps(user.id),
+        fetchFollowerSnapshots(user.id),
+        fetchSettings(user.id),
+        fetchInstagramConnection().catch(() => null),
       ]);
       setTotalLeads(leads.length);
       setCallsBooked(leads.filter((l) => l.status === "call_booked").length);
@@ -42,6 +50,8 @@ export default function DashboardPage() {
       const latest = snapshots[snapshots.length - 1];
       const prev = snapshots[snapshots.length - 2];
       if (latest && prev) setWeekGain(latest.followers - prev.followers);
+      setBrandConfigured(Boolean(settings?.niche && settings?.targetAudience && settings?.offer));
+      setInstagramConnected(Boolean(instagram));
       setLoading(false);
     })();
   }, [user]);
@@ -56,6 +66,33 @@ export default function DashboardPage() {
       <Suspense fallback={<div className="h-24 animate-pulse rounded-xl bg-surface-elevated" />}>
         <InstagramConnectBanner />
       </Suspense>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <Card glow>
+          <CardHeader
+            title="Siguiente mejor acción"
+            description="WIA prioriza el paso que más desbloquea crecimiento real ahora mismo."
+          />
+          <NextAction
+            brandConfigured={brandConfigured}
+            instagramConnected={instagramConnected}
+            totalLeads={totalLeads}
+            bestPost={Boolean(bestPost)}
+          />
+        </Card>
+
+        <Card>
+          <CardHeader title="Checklist de activación IA" description="Completa estos pasos para que la IA trabaje con más contexto." />
+          <ActivationChecklist
+            items={[
+              { label: "Perfil de marca configurado", done: brandConfigured, href: "/settings", icon: Settings },
+              { label: "Instagram conectado", done: instagramConnected, href: "/instagram-data", icon: Instagram },
+              { label: "Radar IA generado", done: true, href: "/growth-radar", icon: Radar },
+              { label: "Primer lead en CRM", done: totalLeads > 0, href: "/leads", icon: Users },
+            ]}
+          />
+        </Card>
+      </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard title={t.dashboard.totalLeads} value={totalLeads} icon={Users} trendUp />
@@ -125,6 +162,138 @@ export default function DashboardPage() {
           ))}
         </div>
       </Card>
+    </div>
+  );
+}
+
+function NextAction({
+  brandConfigured,
+  instagramConnected,
+  totalLeads,
+  bestPost,
+}: {
+  brandConfigured: boolean;
+  instagramConnected: boolean;
+  totalLeads: number;
+  bestPost: boolean;
+}) {
+  if (!brandConfigured) {
+    return (
+      <ActionContent
+        icon={Settings}
+        title="Configura tu perfil de negocio"
+        description="Define nicho, audiencia y oferta para que todas las herramientas IA dejen de ser genéricas."
+        href="/settings"
+        label="Completar perfil"
+      />
+    );
+  }
+
+  if (!instagramConnected) {
+    return (
+      <ActionContent
+        icon={Instagram}
+        title="Conecta Instagram para datos reales"
+        description="Cuando Meta permita el acceso, WIA usará métricas, posts y audiencia para priorizar acciones."
+        href="/settings"
+        label="Conectar Instagram"
+      />
+    );
+  }
+
+  if (totalLeads === 0) {
+    return (
+      <ActionContent
+        icon={Users}
+        title="Crea tu primer lead cualificado"
+        description="Usa Audience Finder o CRM para convertir interés en una oportunidad comercial medible."
+        href="/audience-finder"
+        label="Buscar seguidores potenciales"
+      />
+    );
+  }
+
+  if (!bestPost) {
+    return (
+      <ActionContent
+        icon={Calendar}
+        title="Registra contenido para medir"
+        description="Añade publicaciones o genera un calendario para que la IA detecte formatos ganadores."
+        href="/calendar"
+        label="Crear calendario"
+      />
+    );
+  }
+
+  return (
+    <ActionContent
+      icon={Radar}
+      title="Ejecuta el Radar IA semanal"
+      description="Convierte tus datos en una prioridad clara: qué crear, a quién atraer y cómo convertir."
+      href="/growth-radar"
+      label="Abrir Radar IA"
+    />
+  );
+}
+
+function ActionContent({
+  icon: Icon,
+  title,
+  description,
+  href,
+  label,
+}: {
+  icon: typeof Settings;
+  title: string;
+  description: string;
+  href: string;
+  label: string;
+}) {
+  return (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-start gap-4">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-lime/10">
+          <Icon className="h-5 w-5 text-lime" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold">{title}</h3>
+          <p className="mt-1 text-sm text-muted">{description}</p>
+        </div>
+      </div>
+      <Link href={href} className="shrink-0">
+        <Button>
+          {label}
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </Link>
+    </div>
+  );
+}
+
+function ActivationChecklist({
+  items,
+}: {
+  items: { label: string; done: boolean; href: string; icon: typeof Settings }[];
+}) {
+  return (
+    <div className="space-y-3">
+      {items.map((item) => (
+        <Link
+          key={item.label}
+          href={item.href}
+          className="flex items-center justify-between rounded-lg border border-border bg-surface-elevated p-3 hover:border-lime/30"
+        >
+          <div className="flex items-center gap-3">
+            <item.icon className="h-4 w-4 text-lime" />
+            <span className="text-sm font-medium">{item.label}</span>
+          </div>
+          {item.done ? (
+            <CheckCircle2 className="h-4 w-4 text-lime" />
+          ) : (
+            <ArrowRight className="h-4 w-4 text-muted" />
+          )}
+        </Link>
+      ))}
     </div>
   );
 }

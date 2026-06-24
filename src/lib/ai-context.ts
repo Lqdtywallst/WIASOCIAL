@@ -1,10 +1,5 @@
 import { getSupabaseForUser } from "@/lib/supabase-admin";
-import {
-  fetchFollowerSnapshots,
-  fetchLeads,
-  fetchPosts,
-  fetchSettings,
-} from "@/lib/db";
+import type { LeadStatus, PostPerformance, UserSettings } from "@/types";
 import type { GrowthRadarReport } from "@/types/growth-radar";
 
 type NumericInsightMap = Record<string, number>;
@@ -17,6 +12,14 @@ interface MediaContextRow {
   insights: NumericInsightMap | null;
   comments?: unknown;
   posted_at?: string | null;
+}
+
+interface ContextLead {
+  status: LeadStatus;
+}
+
+interface ContextSnapshot {
+  followers: number;
 }
 
 export interface UserAIContext {
@@ -72,10 +75,10 @@ export async function buildUserAIContext(userId: string, accessToken: string): P
   const sb = getSupabaseForUser(accessToken);
 
   const [settings, leads, posts, snapshots] = await Promise.all([
-    fetchSettings(userId),
-    fetchLeads(userId),
-    fetchPosts(userId),
-    fetchFollowerSnapshots(userId),
+    fetchSettingsForContext(sb, userId),
+    fetchLeadsForContext(sb, userId),
+    fetchPostsForContext(sb, userId),
+    fetchFollowerSnapshotsForContext(sb, userId),
   ]);
 
   let latestAuditScore: number | null = null;
@@ -275,7 +278,72 @@ function buildAudienceSignals(value: unknown): UserAIContext["instagram"] extend
   return { topOnlineHours, demographicHighlights };
 }
 
-function buildFormatSignals(posts: Awaited<ReturnType<typeof fetchPosts>>): UserAIContext["growthSignals"]["bestFormats"] {
+async function fetchSettingsForContext(sb: ReturnType<typeof getSupabaseForUser>, userId: string): Promise<UserSettings | null> {
+  const { data, error } = await sb
+    .from("user_settings")
+    .select("brand_name, instagram_handle, niche, target_audience, offer, default_tone, default_goal")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return {
+    brandName: (data.brand_name as string) ?? "",
+    instagramHandle: (data.instagram_handle as string) ?? "",
+    niche: (data.niche as string) ?? "",
+    targetAudience: (data.target_audience as string) ?? "",
+    offer: (data.offer as string) ?? "",
+    defaultTone: (data.default_tone as UserSettings["defaultTone"]) ?? "professional",
+    defaultGoal: (data.default_goal as UserSettings["defaultGoal"]) ?? "leads",
+  };
+}
+
+async function fetchLeadsForContext(sb: ReturnType<typeof getSupabaseForUser>, userId: string): Promise<ContextLead[]> {
+  const { data, error } = await sb
+    .from("leads")
+    .select("status")
+    .eq("user_id", userId);
+
+  if (error) return [];
+  return (data ?? []).map((lead) => ({ status: lead.status as LeadStatus }));
+}
+
+async function fetchPostsForContext(sb: ReturnType<typeof getSupabaseForUser>, userId: string): Promise<PostPerformance[]> {
+  const { data, error } = await sb
+    .from("post_performance")
+    .select("id, title, type, posted_at, views, likes, comments, saves, shares, leads_generated")
+    .eq("user_id", userId)
+    .order("posted_at", { ascending: false });
+
+  if (error) return [];
+  return (data ?? []).map((post) => ({
+    id: post.id as string,
+    title: (post.title as string) ?? "",
+    type: post.type as PostPerformance["type"],
+    postedAt: (post.posted_at as string) ?? "",
+    views: Number(post.views) || 0,
+    likes: Number(post.likes) || 0,
+    comments: Number(post.comments) || 0,
+    saves: Number(post.saves) || 0,
+    shares: Number(post.shares) || 0,
+    leadsGenerated: Number(post.leads_generated) || 0,
+  }));
+}
+
+async function fetchFollowerSnapshotsForContext(
+  sb: ReturnType<typeof getSupabaseForUser>,
+  userId: string
+): Promise<ContextSnapshot[]> {
+  const { data, error } = await sb
+    .from("follower_snapshots")
+    .select("followers")
+    .eq("user_id", userId)
+    .order("recorded_at", { ascending: true });
+
+  if (error) return [];
+  return (data ?? []).map((snapshot) => ({ followers: Number(snapshot.followers) || 0 }));
+}
+
+function buildFormatSignals(posts: PostPerformance[]): UserAIContext["growthSignals"]["bestFormats"] {
   const byFormat = new Map<string, { posts: number; engagement: number; views: number }>();
 
   for (const post of posts) {
@@ -297,7 +365,7 @@ function buildFormatSignals(posts: Awaited<ReturnType<typeof fetchPosts>>): User
     .slice(0, 4);
 }
 
-function buildContentGaps(posts: Awaited<ReturnType<typeof fetchPosts>>, instagramConnected: boolean): string[] {
+function buildContentGaps(posts: PostPerformance[], instagramConnected: boolean): string[] {
   const gaps: string[] = [];
   const formats = new Set(posts.map((post) => post.type));
   const recentPosts = posts.filter((post) => {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAccessTokenFromRequest, getUserFromAccessToken } from "@/lib/auth-server";
+import { enforceUserRateLimit, getAccessTokenFromRequest, getUserFromAccessToken } from "@/lib/auth-server";
 import { buildUserAIContext } from "@/lib/ai-context";
 import { openai, isOpenAIConfigured } from "@/lib/openai";
 import { getSupabaseForUser } from "@/lib/supabase-admin";
@@ -28,6 +28,8 @@ export async function POST(request: Request) {
   const token = getAccessTokenFromRequest(request);
   const user = await getUserFromAccessToken(token);
   if (!user || !token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const limited = enforceUserRateLimit(request, user.id, "daily-brief", 12, 60 * 60 * 1000);
+  if (limited) return limited;
 
   const { locale = "es", force = false } = await request.json().catch(() => ({ locale: "es", force: false }));
   const today = new Date().toISOString().split("T")[0];

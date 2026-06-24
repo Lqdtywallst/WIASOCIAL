@@ -18,7 +18,15 @@ export async function connectInstagram() {
     }
 
     const token = await getSessionToken();
-    const url = `/api/instagram/auth?token=${encodeURIComponent(token)}`;
+    const authRes = await fetch("/api/instagram/auth", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const authData = await authRes.json();
+    if (!authRes.ok || !authData.url) {
+      throw new Error(authData.error || "No se pudo iniciar Instagram.");
+    }
+    const url = authData.url as string;
 
     if (popup) {
       popup.location.href = url;

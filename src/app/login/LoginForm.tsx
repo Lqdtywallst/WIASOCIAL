@@ -6,13 +6,14 @@ import { Instagram, Zap, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { safeInternalRedirect } from "@/lib/safe-redirect";
 import Link from "next/link";
 
 export default function LoginForm() {
   const { signIn, signUp, signInWithInstagram, configured, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/dashboard";
+  const redirect = safeInternalRedirect(searchParams.get("redirect"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

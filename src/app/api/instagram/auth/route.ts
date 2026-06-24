@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { getAccessTokenFromRequest, getUserFromAccessToken } from "@/lib/auth-server";
+import { enforceUserRateLimit, requireAuth } from "@/lib/auth-server";
 import {
   buildInstagramLoginUrl,
   isInstagramLoginConfigured,
   signInstagramOAuthState,
 } from "@/lib/instagram-login";
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
   if (!isInstagramLoginConfigured()) {
     return NextResponse.json(
       { error: "Instagram App no configurada. Añade INSTAGRAM_APP_ID e INSTAGRAM_APP_SECRET en Railway." },
@@ -14,12 +14,16 @@ export async function GET(request: Request) {
     );
   }
 
-  const token = getAccessTokenFromRequest(request);
-  const user = await getUserFromAccessToken(token);
-  if (!user) {
-    return NextResponse.json({ error: "Sesión inválida" }, { status: 401 });
-  }
+  const auth = await requireAuth(request);
+  if (auth instanceof Response) return auth;
 
-  const state = signInstagramOAuthState(user.id);
-  return NextResponse.redirect(buildInstagramLoginUrl(state));
+  const limited = enforceUserRateLimit(request, auth.user.id, "instagram-auth", 10, 60 * 60 * 1000);
+  if (limited) return limited;
+
+  const state = signInstagramOAuthState(auth.user.id);
+  return NextResponse.json({ url: buildInstagramLoginUrl(state) });
+}
+
+export async function GET() {
+  return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
 }

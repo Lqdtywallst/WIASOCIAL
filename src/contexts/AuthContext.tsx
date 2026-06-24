@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { User, Session } from "@supabase/supabase-js";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { safeInternalRedirect } from "@/lib/safe-redirect";
 
 interface AuthContextValue {
   user: User | null;
@@ -72,9 +73,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInWithInstagram = useCallback(async (redirect = "/dashboard") => {
+    const safeRedirect = safeInternalRedirect(redirect);
     const redirectTo =
       typeof window !== "undefined"
-        ? `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}`
+        ? `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(safeRedirect)}`
         : undefined;
 
     const { error } = await getSupabase().auth.signInWithOAuth({

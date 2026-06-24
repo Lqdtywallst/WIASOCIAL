@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAccessTokenFromRequest, getUserFromAccessToken } from "@/lib/auth-server";
+import { enforceUserRateLimit, getAccessTokenFromRequest, getUserFromAccessToken } from "@/lib/auth-server";
+import { buildUserAIContext, type UserAIContext } from "@/lib/ai-context";
 import { openai, isOpenAIConfigured } from "@/lib/openai";
 
 type AIAction =
@@ -20,13 +21,16 @@ type AIAction =
 const MARKETING_CONTEXT =
   "Act like a senior digital marketing professional. Prioritize positioning, ICP clarity, funnel stage, offer relevance, conversion intent, measurable KPIs and legal organic growth. Avoid generic advice, bots, spam, fake engagement or unverifiable claims.";
 
-async function chat(system: string, user: string, locale = "es") {
+async function chat(system: string, user: string, locale = "es", context?: UserAIContext) {
   const lang = locale === "es" ? "Spanish" : "English";
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
       { role: "system", content: `${MARKETING_CONTEXT}\n\n${system}\n\nRespond in ${lang}. Return ONLY valid JSON, no markdown.` },
-      { role: "user", content: user },
+      {
+        role: "user",
+        content: `${context ? `Trusted app context:\n${JSON.stringify(context)}\n\n` : ""}User request:\n${user}`,
+      },
     ],
     response_format: { type: "json_object" },
     temperature: 0.8,
@@ -47,12 +51,15 @@ export async function POST(request: Request) {
   try {
     const token = getAccessTokenFromRequest(request);
     const user = await getUserFromAccessToken(token);
-    if (!user) {
+    if (!user || !token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const limited = enforceUserRateLimit(request, user.id, "api-ai", 30, 60 * 60 * 1000);
+    if (limited) return limited;
 
     const body = await request.json();
     const { action, locale = "es", ...params } = body as { action: AIAction; locale?: string; [key: string]: unknown };
+    const context = await buildUserAIContext(user.id, token);
 
     let result: unknown;
 
@@ -68,7 +75,7 @@ Goal: ${params.goal as string}
 Tone: ${params.tone as string}
 
 Return JSON: { hook, reelScript, caption, cta, hashtags (array), storySequence (array of 5), dmReplyTemplate }`
-, locale
+, locale, context
         );
         break;
 
@@ -83,7 +90,7 @@ Style: ${params.style}
 Key points: ${params.keyPoints || "none"}
 
 Return JSON: { hook: string, script: string (multiline with [0-5s] style timestamps), title: string }`
-, locale
+, locale, context
         );
         break;
 
@@ -96,7 +103,7 @@ Type: ${params.storyType}
 CTA: ${params.cta}
 
 Return JSON: { stories: [{ slide (1-5), content, type (Hook|Problem|Solution|Engagement|CTA) }] }`
-, locale
+, locale, context
         );
         break;
 
@@ -105,7 +112,7 @@ Return JSON: { stories: [{ slide (1-5), content, type (Hook|Problem|Solution|Eng
           "You are a viral hook analyst for Instagram Reels with performance marketing judgment.",
           `Analyze this hook: "${params.hook}"
 Return JSON: { score (1-10), strengths (array), weaknesses (array), variants (array of 5 improved hooks) }`
-, locale
+, locale, context
         );
         break;
 
@@ -114,7 +121,7 @@ Return JSON: { score (1-10), strengths (array), weaknesses (array), variants (ar
           "You are an Instagram hashtag researcher who balances reach, buyer intent and niche relevance.",
           `Research hashtags for niche: ${params.niche}
 Return JSON: { clusters: [{ tier: "large"|"medium"|"small", hashtags: [{ tag, posts (e.g. "120K"), competition }] }] }`
-, locale
+, locale, context
         );
         break;
 
@@ -128,7 +135,7 @@ Niche: ${params.niche}
 Goal: grow followers legally
 
 Return JSON: { overallScore (1-10), items: [{ category, score (1-10), status ("good"|"warning"|"bad"), tip }], bioSuggestion }`
-, locale
+, locale, context
         );
         break;
 
@@ -141,7 +148,7 @@ Goal: ${params.goal || "followers"}
 Starting date: ${params.startDate || new Date().toISOString().split("T")[0]}
 
 Return JSON: { items: [{ day (YYYY-MM-DD), dayLabel (Mon-Sun in locale), type (reel|carousel|story|post), title, hook, time (HH:MM) }] }`
-, locale
+, locale, context
         );
         break;
 
@@ -152,7 +159,7 @@ Return JSON: { items: [{ day (YYYY-MM-DD), dayLabel (Mon-Sun in locale), type (r
 Niche: ${params.niche || "general"}
 
 Return JSON: { pieces: [{ day (1-7), type (reel|carousel|story|post), title, hook, description }] }`
-, locale
+, locale, context
         );
         break;
 
@@ -166,25 +173,25 @@ Example: ${params.example}
 Niche: ${params.niche}
 
 Return JSON: { adapted: (full adapted content plan as string) }`
-, locale
+, locale, context
         );
         break;
 
       case "engagement-plan":
         result = await chat(
-          "You are an Instagram engagement coach focused on relationship-building and lead generation. Only suggest MANUAL authentic engagement, never bots.",
+          "You are an Instagram engagement coach focused on relationship-building and lead generation. Only suggest MANUAL authentic engagement, never bots. Do not invent real Instagram accounts; use generic @ placeholders unless the user provided observed accounts.",
           `Create a 15-minute daily engagement plan for niche: ${params.niche}
-Return JSON: { tasks: [{ username (real account in this niche), action, commentTemplate }] } — exactly 5 tasks`
-, locale
+Return JSON: { tasks: [{ username (generic @ placeholder or user-provided account only), action, commentTemplate }] } — exactly 5 tasks`
+, locale, context
         );
         break;
 
       case "engagement-targets":
         result = await chat(
-          "You are an Instagram networking strategist. Suggest real public accounts for manual engagement only, prioritizing strategic fit and partnership or lead potential.",
+          "You are an Instagram networking strategist. Suggest manual engagement targets by archetype or user-provided accounts only. Do not invent real public accounts.",
           `Find 5 Instagram accounts to engage with manually in niche: ${params.niche}
-Return JSON: { targets: [{ username, niche, followers (estimate), engagementRate (estimate), reason }] }`
-, locale
+Return JSON: { targets: [{ username (generic @ placeholder or user-provided account only), niche, followers (estimate or "unknown"), engagementRate (estimate or "unknown"), reason }] }`
+, locale, context
         );
         break;
 
@@ -196,17 +203,17 @@ Niche: ${params.niche}
 ${params.postData ? `User's post history: ${JSON.stringify(params.postData)}` : "No history yet — use industry benchmarks"}
 
 Return JSON: { slots: [{ day, time, score (1-100), reason }], tip }`
-, locale
+, locale, context
         );
         break;
 
       case "competitor-analyze":
         result = await chat(
-          "You are an Instagram competitor analyst with digital marketing and positioning expertise.",
+          "You are an Instagram competitor analyst with digital marketing and positioning expertise. If live data is unavailable, clearly label outputs as strategic estimates based on user-provided context.",
           `Analyze competitor @${params.username} in niche ${params.niche}.
-Based on known public content patterns for similar accounts.
+Use only user-provided information and strategic pattern estimates; do not claim live data access.
 Return JSON: { username, followers (estimate), niche, topPosts: [{ title, views (estimate), format, hook }], patterns (array) }`
-, locale
+, locale, context
         );
         break;
 

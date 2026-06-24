@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
+import { safeInternalRedirect } from "@/lib/safe-redirect";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -15,7 +16,7 @@ export default function AuthCallbackPage() {
       const params = new URLSearchParams(window.location.search);
       const authError = params.get("error_description") || params.get("error");
       const redirectParam = params.get("redirect");
-      const redirectTo = redirectParam?.startsWith("/") ? redirectParam : "/dashboard";
+      const redirectTo = safeInternalRedirect(redirectParam);
 
       if (authError) {
         setMessage(decodeURIComponent(authError));

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAccessTokenFromRequest, getUserFromAccessToken } from "@/lib/auth-server";
+import { enforceUserRateLimit, getAccessTokenFromRequest, getUserFromAccessToken } from "@/lib/auth-server";
 import { scoreInstagramProfile } from "@/lib/audit-scoring";
 import { openai, isOpenAIConfigured } from "@/lib/openai";
 import { getSupabaseForUser } from "@/lib/supabase-admin";
@@ -56,6 +56,8 @@ export async function POST(request: Request) {
   if (!user || !token) {
     return NextResponse.json({ error: "Sesión inválida" }, { status: 401 });
   }
+  const limited = enforceUserRateLimit(request, user.id, "instagram-audit", 20, 60 * 60 * 1000);
+  if (limited) return limited;
 
   try {
     const body = await request.json();

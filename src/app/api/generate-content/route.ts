@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAccessTokenFromRequest, getUserFromAccessToken } from "@/lib/auth-server";
+import { enforceUserRateLimit, getAccessTokenFromRequest, getUserFromAccessToken } from "@/lib/auth-server";
 import { openai, isOpenAIConfigured } from "@/lib/openai";
 import type { ContentGoal, ContentTone } from "@/types";
 
@@ -13,11 +13,13 @@ export async function POST(request: Request) {
 
   const token = getAccessTokenFromRequest(request);
   const user = await getUserFromAccessToken(token);
-  if (!user) {
+  if (!user || !token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const limited = enforceUserRateLimit(request, user.id, "generate-content", 30, 60 * 60 * 1000);
+  if (limited) return limited;
 
-  const body = await request.json();
+  const body = await request.json().catch(() => ({}));
   const { niche, audience, offer, goal, tone } = body as {
     niche: string;
     audience: string;

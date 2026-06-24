@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import type { KeyboardEvent } from "react";
 import { Menu, Bell, Search, LogOut } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/LanguageProvider";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,10 +16,35 @@ export function Header({ onMenuClick }: HeaderProps) {
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
   const router = useRouter();
+  const [query, setQuery] = useState("");
 
   const handleSignOut = async () => {
     await signOut();
     router.replace("/login");
+  };
+
+  const handleSearch = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter") return;
+    const value = query.trim().toLowerCase();
+    if (!value) return;
+
+    const routes = [
+      { label: t.nav.dashboard, href: "/dashboard" },
+      { label: t.nav.growthRadar, href: "/growth-radar" },
+      { label: t.nav.audienceFinder, href: "/audience-finder" },
+      { label: t.nav.marketingPlan, href: "/marketing-plan" },
+      { label: t.nav.funnelBuilder, href: "/funnel-builder" },
+      { label: t.nav.aiCoach, href: "/ai-coach" },
+      { label: t.nav.contentGenerator, href: "/content-generator" },
+      { label: t.nav.calendar, href: "/calendar" },
+      { label: t.nav.leads, href: "/leads" },
+      { label: t.nav.analytics, href: "/analytics" },
+      { label: t.nav.settings, href: "/settings" },
+    ];
+
+    const match = routes.find((route) => route.label.toLowerCase().includes(value));
+    router.push(match?.href ?? "/ai-coach");
+    setQuery("");
   };
 
   return (
@@ -34,6 +61,9 @@ export function Header({ onMenuClick }: HeaderProps) {
           <input
             type="text"
             placeholder={t.common.search}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={handleSearch}
             className="w-48 bg-transparent text-sm text-foreground placeholder:text-muted focus:outline-none lg:w-64"
           />
         </div>
@@ -41,7 +71,11 @@ export function Header({ onMenuClick }: HeaderProps) {
 
       <div className="flex items-center gap-3">
         <LanguageToggle />
-        <button className="relative rounded-lg p-2 text-muted hover:bg-surface-elevated hover:text-foreground">
+        <button
+          onClick={() => router.push("/dashboard")}
+          title="Brief diario"
+          className="relative rounded-lg p-2 text-muted hover:bg-surface-elevated hover:text-foreground"
+        >
           <Bell className="h-5 w-5" />
         </button>
         <button
