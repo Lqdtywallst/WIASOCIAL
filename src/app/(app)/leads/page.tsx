@@ -13,7 +13,7 @@ import { statusColors } from "@/data/dummy";
 import { formatDate } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n/LanguageProvider";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchLeads, createLead, updateLeadStatus } from "@/lib/db";
+import { fetchLeads, createLead, updateLeadStatus, fetchLeadAIScores } from "@/lib/db";
 import { scoreLead, type LeadIQResult } from "@/lib/ai-client";
 import type { Lead, LeadStatus } from "@/types";
 import { cn } from "@/lib/utils";
@@ -44,7 +44,12 @@ export default function LeadsPage() {
     if (!user) return;
     setLoading(true);
     try {
-      setLeads(await fetchLeads(user.id));
+      const [leadRows, savedScores] = await Promise.all([
+        fetchLeads(user.id),
+        fetchLeadAIScores(user.id),
+      ]);
+      setLeads(leadRows);
+      setIqResults(savedScores);
     } finally {
       setLoading(false);
     }

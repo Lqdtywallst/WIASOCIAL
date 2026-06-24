@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Zap, Loader2 } from "lucide-react";
+import { Instagram, Zap, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import Link from "next/link";
 
 export default function LoginForm() {
-  const { signIn, signUp, configured, loading } = useAuth();
+  const { signIn, signUp, signInWithInstagram, configured, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/dashboard";
@@ -19,6 +19,7 @@ export default function LoginForm() {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [oauthSubmitting, setOauthSubmitting] = useState(false);
   const [success, setSuccess] = useState("");
 
   if (loading) {
@@ -41,6 +42,17 @@ export default function LoginForm() {
     router.replace(redirect);
   };
 
+  const handleInstagramLogin = async () => {
+    setError("");
+    setSuccess("");
+    setOauthSubmitting(true);
+    const result = await signInWithInstagram(redirect);
+    if (result.error) {
+      setError(result.error);
+      setOauthSubmitting(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
@@ -50,6 +62,15 @@ export default function LoginForm() {
           <p className="mt-2 text-muted">Datos reales · IA real · Crecimiento legal</p>
         </div>
         <form onSubmit={handleSubmit} className="rounded-xl border border-border bg-surface p-6 space-y-4">
+          <Button type="button" variant="secondary" onClick={handleInstagramLogin} disabled={oauthSubmitting || submitting} className="w-full">
+            {oauthSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Instagram className="h-4 w-4" />}
+            Continuar con Instagram
+          </Button>
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs uppercase tracking-wider text-muted">o con email</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
           <Input id="email" label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <Input id="password" label="Contraseña" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
           {error && <p className="text-sm text-red-400">{error}</p>}

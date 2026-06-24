@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useTranslation } from "@/lib/i18n/LanguageProvider";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchSettings } from "@/lib/db";
+import { fetchSettings, saveGeneratedContent } from "@/lib/db";
 import { callAI } from "@/lib/ai-client";
 
 export default function ProfileAuditPage() {
@@ -34,7 +34,15 @@ export default function ProfileAuditPage() {
     setLoading(true);
     setError("");
     try {
-      setAudit(await callAI("profile-audit", { bio, handle, niche }));
+      const result = await callAI("profile-audit", { bio, handle, niche });
+      setAudit(result);
+      if (user) {
+        await saveGeneratedContent(user.id, {
+          content_type: "profile_audit",
+          niche,
+          raw_json: { bio, handle, niche, ...result },
+        });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {

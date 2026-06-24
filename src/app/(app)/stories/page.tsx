@@ -92,9 +92,13 @@ export default function StoriesPage() {
         <Card className="mt-8">
           <CardHeader title={t.stories.saved} description={t.stories.savedDesc} />
           {saved.map((set) => (
-            <div key={set.id} className="mb-4">
+            <button
+              key={set.id}
+              onClick={() => { setIdea(set.idea); setStories(set.stories); }}
+              className="mb-4 flex w-full justify-between rounded-lg border border-border bg-surface-elevated p-4 text-left hover:border-lime/30"
+            >
               <div className="flex justify-between mb-2"><p className="font-medium">{set.idea}</p><span className="text-sm text-muted">{formatDate(set.createdAt, locale)}</span></div>
-            </div>
+            </button>
           ))}
         </Card>
       )}

@@ -123,7 +123,7 @@ export async function fetchDailyBrief() {
   return { brief: data.brief as DailyBrief | null, date: data.date as string };
 }
 
-export async function generateDailyBrief(locale = "es") {
+export async function generateDailyBrief(locale = "es", force = false) {
   const token = await getToken();
   const res = await fetch("/api/daily-brief", {
     method: "POST",
@@ -131,7 +131,7 @@ export async function generateDailyBrief(locale = "es") {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ locale }),
+    body: JSON.stringify({ locale, force }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Error al generar brief");

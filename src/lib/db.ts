@@ -28,6 +28,18 @@ export async function createLead(userId: string, lead: Omit<Lead, "id" | "create
     .select()
     .single();
   if (error) throw error;
+
+  if (lead.followUpDate) {
+    await getSupabase().from("follow_ups").insert({
+      user_id: userId,
+      lead_id: data.id,
+      lead_username: lead.username,
+      due_date: lead.followUpDate,
+      note: lead.notes || "Seguimiento del lead",
+      completed: false,
+    });
+  }
+
   return mapLead(data);
 }
 
@@ -367,6 +379,38 @@ export async function saveGeneratedContent(userId: string, data: Record<string, 
   if (error) throw error;
 }
 
+export async function fetchGeneratedContent(userId: string, contentType?: string, limit = 10) {
+  let query = getSupabase()
+    .from("generated_content")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (contentType) query = query.eq("content_type", contentType);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    contentType: r.content_type as string,
+    niche: (r.niche as string) ?? "",
+    audience: (r.audience as string) ?? "",
+    offer: (r.offer as string) ?? "",
+    goal: (r.goal as string) ?? "",
+    tone: (r.tone as string) ?? "",
+    hook: (r.hook as string) ?? "",
+    reelScript: (r.reel_script as string) ?? "",
+    caption: (r.caption as string) ?? "",
+    cta: (r.cta as string) ?? "",
+    hashtags: (r.hashtags as string[]) ?? [],
+    storySequence: (r.story_sequence as string[]) ?? [],
+    dmReplyTemplate: (r.dm_reply_template as string) ?? "",
+    rawJson: r.raw_json as unknown,
+    createdAt: (r.created_at as string).split("T")[0],
+  }));
+}
+
 // ─── Reel scripts ─────────────────────────────────────
 export async function fetchReelScripts(userId: string) {
   const { data, error } = await getSupabase()
@@ -435,6 +479,39 @@ export async function saveContentSeries(userId: string, idea: string, pieces: un
     pieces,
   });
   if (error) throw error;
+}
+
+export async function fetchContentSeries(userId: string, limit = 10) {
+  const { data, error } = await getSupabase()
+    .from("content_series")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    idea: r.idea as string,
+    pieces: r.pieces as import("@/types").ContentSeriesPiece[],
+    createdAt: (r.created_at as string).split("T")[0],
+  }));
+}
+
+export async function fetchLeadAIScores(userId: string) {
+  const { data, error } = await getSupabase()
+    .from("lead_ai_scores")
+    .select("lead_id, score, reasoning, next_action, dm_template")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return Object.fromEntries((data ?? []).map((r) => [
+    r.lead_id as string,
+    {
+      score: r.score as number,
+      reasoning: (r.reasoning as string) ?? "",
+      nextAction: (r.next_action as string) ?? "",
+      dmTemplate: (r.dm_template as string) ?? "",
+    },
+  ]));
 }
 
 // ─── Instagram Audit Pro ──────────────────────────────

@@ -1,25 +1,38 @@
 "use client";
 
-import { useState } from "react";
-import { Layers, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Layers, Loader2, Clock } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Card } from "@/components/ui/Card";
+import { Card, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useTranslation } from "@/lib/i18n/LanguageProvider";
 import { useAuth } from "@/contexts/AuthContext";
-import { saveContentSeries, fetchSettings } from "@/lib/db";
+import { saveContentSeries, fetchSettings, fetchContentSeries } from "@/lib/db";
 import { callAI } from "@/lib/ai-client";
 import type { ContentSeriesPiece } from "@/types";
 
 export default function ContentSeriesPage() {
   const { t, locale } = useTranslation();
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   const [idea, setIdea] = useState("");
   const [series, setSeries] = useState<ContentSeriesPiece[]>([]);
+  const [saved, setSaved] = useState<{ id: string; idea: string; pieces: ContentSeriesPiece[]; createdAt: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const ideaParam = searchParams.get("idea");
+    if (ideaParam) setIdea(ideaParam);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchContentSeries(user.id).then(setSaved).catch(() => setSaved([]));
+  }, [user]);
 
   const generate = async () => {
     if (!idea.trim()) return;
@@ -29,7 +42,10 @@ export default function ContentSeriesPage() {
       const settings = user ? await fetchSettings(user.id) : null;
       const result = await callAI("content-series", { idea, niche: settings?.niche }, locale);
       setSeries(result.pieces);
-      if (user) await saveContentSeries(user.id, idea, result.pieces);
+      if (user) {
+        await saveContentSeries(user.id, idea, result.pieces);
+        setSaved(await fetchContentSeries(user.id));
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
@@ -68,6 +84,26 @@ export default function ContentSeriesPage() {
             </Card>
           ))}
         </div>
+      )}
+      {saved.length > 0 && (
+        <Card className="mt-8">
+          <CardHeader title="Series guardadas" description="Haz clic para volver a cargar una serie." />
+          <div className="space-y-3">
+            {saved.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => { setIdea(item.idea); setSeries(item.pieces); }}
+                className="flex w-full items-center justify-between rounded-lg border border-border bg-surface-elevated p-4 text-left hover:border-lime/30"
+              >
+                <div>
+                  <p className="font-medium">{item.idea}</p>
+                  <p className="text-sm text-muted">{item.pieces.length} {t.contentSeries.pieces}</p>
+                </div>
+                <span className="flex items-center gap-2 text-xs text-muted"><Clock className="h-3 w-3" />{item.createdAt}</span>
+              </button>
+            ))}
+          </div>
+        </Card>
       )}
     </div>
   );

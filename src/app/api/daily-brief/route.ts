@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   const user = await getUserFromAccessToken(token);
   if (!user || !token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { locale = "es" } = await request.json().catch(() => ({ locale: "es" }));
+  const { locale = "es", force = false } = await request.json().catch(() => ({ locale: "es", force: false }));
   const today = new Date().toISOString().split("T")[0];
   const sb = getSupabaseForUser(token);
 
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     .eq("brief_date", today)
     .maybeSingle();
 
-  if (existing?.brief) {
+  if (existing?.brief && !force) {
     return NextResponse.json({ brief: existing.brief, date: today, cached: true });
   }
 

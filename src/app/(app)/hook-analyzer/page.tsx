@@ -7,10 +7,13 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { useTranslation } from "@/lib/i18n/LanguageProvider";
+import { useAuth } from "@/contexts/AuthContext";
 import { callAI } from "@/lib/ai-client";
+import { saveGeneratedContent } from "@/lib/db";
 
 export default function HookAnalyzerPage() {
   const { t, locale } = useTranslation();
+  const { user } = useAuth();
   const [hook, setHook] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -21,7 +24,15 @@ export default function HookAnalyzerPage() {
     setLoading(true);
     setError("");
     try {
-      setResult(await callAI("hook-analyze", { hook }, locale));
+      const analysis = await callAI("hook-analyze", { hook }, locale);
+      setResult(analysis);
+      if (user) {
+        await saveGeneratedContent(user.id, {
+          content_type: "hook_analysis",
+          hook,
+          raw_json: { hook, ...analysis },
+        });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {

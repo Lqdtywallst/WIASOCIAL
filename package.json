@@ -12,7 +12,8 @@
     "lint": "next lint",
     "migrate:instagram": "node --env-file=.env.local scripts/migrate-instagram.mjs",
     "migrate:growth-radar": "node --env-file=.env.local scripts/migrate-growth-radar.mjs",
-    "migrate:marketing-os": "node --env-file=.env.local scripts/migrate-marketing-os.mjs"
+    "migrate:marketing-os": "node --env-file=.env.local scripts/migrate-marketing-os.mjs",
+    "migrate:persistence-fixes": "node --env-file=.env.local scripts/migrate-persistence-fixes.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

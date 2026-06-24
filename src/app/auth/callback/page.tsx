@@ -14,6 +14,8 @@ export default function AuthCallbackPage() {
       const sb = getSupabase();
       const params = new URLSearchParams(window.location.search);
       const authError = params.get("error_description") || params.get("error");
+      const redirectParam = params.get("redirect");
+      const redirectTo = redirectParam?.startsWith("/") ? redirectParam : "/dashboard";
 
       if (authError) {
         setMessage(decodeURIComponent(authError));
@@ -45,7 +47,7 @@ export default function AuthCallbackPage() {
       }
 
       const { data: { session } } = await sb.auth.getSession();
-      router.replace(session ? "/dashboard" : "/login");
+      router.replace(session ? redirectTo : "/login");
     };
 
     handleAuth();

@@ -24,9 +24,12 @@ CREATE TABLE IF NOT EXISTS lead_ai_scores (
   score INTEGER NOT NULL,
   reasoning TEXT,
   next_action TEXT,
+  dm_template TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(user_id, lead_id)
 );
+
+ALTER TABLE lead_ai_scores ADD COLUMN IF NOT EXISTS dm_template TEXT;
 
 ALTER TABLE ai_coach_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_briefs ENABLE ROW LEVEL SECURITY;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, Clock } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -12,7 +12,7 @@ import { OutputBlock } from "@/components/ui/PageHeader";
 import { useTranslation } from "@/lib/i18n/LanguageProvider";
 import { useAuth } from "@/contexts/AuthContext";
 import { callAI } from "@/lib/ai-client";
-import { saveGeneratedContent, fetchSettings } from "@/lib/db";
+import { saveGeneratedContent, fetchSettings, fetchGeneratedContent } from "@/lib/db";
 import type { ContentGoal, ContentTone, GeneratedContent } from "@/types";
 
 export default function ContentGeneratorPage() {
@@ -26,6 +26,7 @@ export default function ContentGeneratorPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [output, setOutput] = useState<GeneratedContent | null>(null);
+  const [history, setHistory] = useState<(GeneratedContent & { id: string; createdAt: string; niche: string })[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -38,6 +39,20 @@ export default function ContentGeneratorPage() {
         setTone(s.defaultTone);
       }
     });
+    fetchGeneratedContent(user.id, "full", 8).then((items) => {
+      setHistory(items.map((item) => ({
+        id: item.id,
+        createdAt: item.createdAt,
+        niche: item.niche,
+        hook: item.hook,
+        reelScript: item.reelScript,
+        caption: item.caption,
+        cta: item.cta,
+        hashtags: item.hashtags,
+        storySequence: item.storySequence,
+        dmReplyTemplate: item.dmReplyTemplate,
+      })));
+    }).catch(() => setHistory([]));
   }, [user]);
 
   const goalOptions = [
@@ -75,6 +90,19 @@ export default function ContentGeneratorPage() {
           hashtags: content.hashtags, story_sequence: content.storySequence,
           dm_reply_template: content.dmReplyTemplate,
         });
+        const items = await fetchGeneratedContent(user.id, "full", 8);
+        setHistory(items.map((item) => ({
+          id: item.id,
+          createdAt: item.createdAt,
+          niche: item.niche,
+          hook: item.hook,
+          reelScript: item.reelScript,
+          caption: item.caption,
+          cta: item.cta,
+          hashtags: item.hashtags,
+          storySequence: item.storySequence,
+          dmReplyTemplate: item.dmReplyTemplate,
+        })));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
@@ -124,6 +152,26 @@ export default function ContentGeneratorPage() {
           )}
         </div>
       </div>
+      {history.length > 0 && (
+        <Card className="mt-8">
+          <CardHeader title="Generaciones guardadas" description="Haz clic para volver a cargar contenido generado." />
+          <div className="space-y-3">
+            {history.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setOutput(item)}
+                className="flex w-full items-center justify-between rounded-lg border border-border bg-surface-elevated p-4 text-left hover:border-lime/30"
+              >
+                <div>
+                  <p className="font-medium line-clamp-1">{item.hook}</p>
+                  <p className="text-sm text-muted">{item.niche || t.contentGenerator.title}</p>
+                </div>
+                <span className="flex items-center gap-2 text-xs text-muted"><Clock className="h-3 w-3" />{item.createdAt}</span>
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

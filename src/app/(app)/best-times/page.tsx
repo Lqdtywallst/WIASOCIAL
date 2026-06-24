@@ -7,7 +7,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useTranslation } from "@/lib/i18n/LanguageProvider";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchSettings, fetchPosts } from "@/lib/db";
+import { fetchSettings, fetchPosts, saveGeneratedContent } from "@/lib/db";
 import { callAI } from "@/lib/ai-client";
 
 export default function BestTimesPage() {
@@ -29,6 +29,11 @@ export default function BestTimesPage() {
       });
       setSlots(result.slots);
       setTip(result.tip);
+      await saveGeneratedContent(user.id, {
+        content_type: "best_times",
+        niche: settings?.niche || "general",
+        raw_json: result,
+      });
     } finally {
       setLoading(false);
     }

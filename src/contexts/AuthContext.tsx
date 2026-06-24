@@ -17,6 +17,7 @@ interface AuthContextValue {
   configured: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string) => Promise<{ error: string | null }>;
+  signInWithInstagram: (redirect?: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -70,12 +71,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error?.message ?? null };
   }, []);
 
+  const signInWithInstagram = useCallback(async (redirect = "/dashboard") => {
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}`
+        : undefined;
+
+    const { error } = await getSupabase().auth.signInWithOAuth({
+      provider: "facebook",
+      options: {
+        redirectTo,
+        scopes: "email,public_profile",
+      },
+    });
+
+    return { error: error?.message ?? null };
+  }, []);
+
   const signOut = useCallback(async () => {
     await getSupabase().auth.signOut();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, configured, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, configured, signIn, signUp, signInWithInstagram, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -58,7 +58,7 @@ export default function CompetitorsPage() {
       <Card className="mb-6">
         <div className="flex flex-col gap-4 sm:flex-row">
           <Input id="username" label={t.competitors.username} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="@competidor" className="flex-1" />
-          <div className="flex items-end"><Button onClick={analyze} disabled={analyzing}><Plus className="h-4 w-4" />{analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : t.competitors.add}</Button></div>
+          <div className="flex items-end"><Button onClick={analyze} disabled={analyzing || !username.trim()}><Plus className="h-4 w-4" />{analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : t.competitors.add}</Button></div>
         </div>
       </Card>
       <div className="space-y-6">

@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { dummyViralFormats } from "@/data/growth";
 import { useTranslation } from "@/lib/i18n/LanguageProvider";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchSettings } from "@/lib/db";
+import { fetchSettings, saveGeneratedContent } from "@/lib/db";
 import { callAI } from "@/lib/ai-client";
 
 export default function FormatsPage() {
@@ -26,6 +26,13 @@ export default function FormatsPage() {
         formatName: name, structure, example, niche: settings?.niche || "general",
       });
       setAdapted(result.adapted);
+      if (user) {
+        await saveGeneratedContent(user.id, {
+          content_type: "format_adapt",
+          niche: settings?.niche || "general",
+          raw_json: { formatName: name, structure, example, adapted: result.adapted },
+        });
+      }
     } finally {
       setLoading(false);
     }

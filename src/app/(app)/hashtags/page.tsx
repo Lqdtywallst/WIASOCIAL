@@ -8,10 +8,13 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useTranslation } from "@/lib/i18n/LanguageProvider";
+import { useAuth } from "@/contexts/AuthContext";
 import { callAI } from "@/lib/ai-client";
+import { saveGeneratedContent } from "@/lib/db";
 
 export default function HashtagsPage() {
   const { t, locale } = useTranslation();
+  const { user } = useAuth();
   const [niche, setNiche] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -24,6 +27,14 @@ export default function HashtagsPage() {
     try {
       const result = await callAI("hashtags", { niche }, locale);
       setClusters(result.clusters);
+      if (user) {
+        await saveGeneratedContent(user.id, {
+          content_type: "hashtags",
+          niche,
+          hashtags: result.clusters?.flatMap((c: { hashtags: { tag: string }[] }) => c.hashtags.map((h) => h.tag)) ?? [],
+          raw_json: result,
+        });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {

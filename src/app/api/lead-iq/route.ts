@@ -46,6 +46,7 @@ export async function POST(request: Request) {
     score: result.score,
     reasoning: result.reasoning,
     next_action: result.nextAction,
+    dm_template: result.dmTemplate,
   }, { onConflict: "user_id,lead_id" });
 
   return NextResponse.json(result);

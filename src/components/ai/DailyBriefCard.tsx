@@ -22,7 +22,7 @@ export function DailyBriefCard() {
     else setLoading(true);
     try {
       const result = force
-        ? await generateDailyBrief(locale)
+        ? await generateDailyBrief(locale, true)
         : await fetchDailyBrief().then(async (r) => {
             if (r.brief) return { brief: r.brief, date: r.date, cached: true };
             return generateDailyBrief(locale);

@@ -100,10 +100,14 @@ export default function ReelScriptsPage() {
         <Card className="mt-8">
           <CardHeader title={t.reelScripts.saved} description={t.reelScripts.savedDesc} />
           <div className="space-y-3">{saved.map((script) => (
-            <div key={script.id} className="flex items-center justify-between rounded-lg border border-border bg-surface-elevated p-4">
+            <button
+              key={script.id}
+              onClick={() => { setGeneratedHook(script.hook); setGeneratedScript(script.script); setTopic(script.title); setNiche(script.niche); }}
+              className="flex w-full items-center justify-between rounded-lg border border-border bg-surface-elevated p-4 text-left hover:border-lime/30"
+            >
               <div><p className="font-medium">{script.title}</p><p className="text-sm text-muted line-clamp-1">{script.hook}</p></div>
               <div className="flex items-center gap-3 text-sm text-muted"><Clock className="h-3 w-3" />{script.duration}<span>{formatDate(script.createdAt, locale)}</span></div>
-            </div>
+            </button>
           ))}</div>
         </Card>
       )}

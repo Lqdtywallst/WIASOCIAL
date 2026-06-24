@@ -1,4 +1,32 @@
-# Conectar Instagram — Continuar con Instagram
+# Instagram en WIA Social
+
+Hay dos flujos distintos:
+
+1. **Acceso a la app con Instagram**: botón en `/login` usando Supabase Auth con proveedor Meta/Facebook.
+2. **Conectar datos de Instagram**: OAuth de Instagram Business para importar perfil, posts, insights y comentarios.
+
+---
+
+## A) Acceso a la app con Instagram
+
+En Supabase:
+
+1. Ve a **Authentication → Providers**
+2. Activa **Facebook**
+3. Añade el App ID y App Secret de Meta
+4. En URLs autorizadas, añade:
+```
+https://wiasocial-production.up.railway.app/auth/callback
+http://localhost:3000/auth/callback
+```
+
+En Meta Developers, para Facebook Login / OAuth, añade esas mismas URLs como redirect válidas.
+
+El botón de login se muestra como **Continuar con Instagram**, pero técnicamente la sesión la crea Supabase usando el proveedor Meta/Facebook. Para leer métricas reales de Instagram sigue haciendo falta el flujo B.
+
+---
+
+## B) Conectar datos de Instagram
 
 Login directo con Instagram (sin Facebook). Solo lectura — importa perfil, posts, insights y comentarios.
 
@@ -68,10 +96,10 @@ Ejecuta (o `npm run migrate:instagram` con `SUPABASE_DB_PASSWORD` en `.env.local
 
 ## Paso 6 — Experiencia del cliente
 
-1. Registro en WIA Social
-2. **Continuar con Instagram** (un clic)
-3. Login con usuario/contraseña de Instagram
-4. Autorizar → datos sincronizados automáticamente
+1. El usuario entra a WIA Social con email o **Continuar con Instagram**
+2. Dentro de la app va a Settings → Instagram
+3. Pulsa **Continuar con Instagram** para conectar métricas
+4. Autoriza → datos sincronizados automáticamente
 
 ---
 

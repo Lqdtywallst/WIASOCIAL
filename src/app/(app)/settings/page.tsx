@@ -29,6 +29,8 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings>(defaults);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -40,9 +42,17 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     if (!user) return;
-    await saveSettings(user.id, settings);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaving(true);
+    setError("");
+    try {
+      await saveSettings(user.id, settings);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar la configuración");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const openaiOk = isOpenAIConfigured();
@@ -66,7 +76,8 @@ export default function SettingsPage() {
               <Select id="tone" label={t.settings.defaultTone} value={settings.defaultTone} onChange={(e) => setSettings({ ...settings, defaultTone: e.target.value as ContentTone })} options={toneOptions} />
               <Select id="goal" label={t.settings.defaultGoal} value={settings.defaultGoal} onChange={(e) => setSettings({ ...settings, defaultGoal: e.target.value as ContentGoal })} options={goalOptions} />
             </div>
-            <Button onClick={handleSave}><Save className="h-4 w-4" />{saved ? t.common.saved : t.settings.saveSettings}</Button>
+            {error && <p className="text-sm text-red-400">{error}</p>}
+            <Button onClick={handleSave} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{saved ? t.common.saved : t.settings.saveSettings}</Button>
           </div>
         </Card>
         <div className="space-y-6">
