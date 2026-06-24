@@ -61,6 +61,7 @@ export function buildInstagramLoginUrl(state: string): string {
     state,
     enable_fb_login: "false",
     force_reauth: "true",
+    force_authentication: "1",
   });
   return `https://www.instagram.com/oauth/authorize?${params}`;
 }

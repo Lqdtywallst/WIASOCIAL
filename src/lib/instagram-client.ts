@@ -37,7 +37,7 @@ export async function connectInstagram() {
 function openInstagramPopup() {
   const popup = window.open(
     "about:blank",
-    "wia-instagram-connect",
+    `wia-instagram-connect-${Date.now()}`,
     "width=520,height=720,menubar=no,toolbar=no,location=yes,status=no"
   );
 
