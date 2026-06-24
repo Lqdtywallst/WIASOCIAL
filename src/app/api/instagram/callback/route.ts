@@ -11,16 +11,19 @@ export async function GET(request: Request) {
   const error = searchParams.get("error_description") || searchParams.get("error");
 
   if (error) {
-    return finishInstagramOAuth(`${getAppUrl()}/settings?instagram=error&message=${encodeURIComponent(error)}`, false);
+    console.error("Instagram OAuth returned an error", { error });
+    return finishInstagramOAuth(`${getAppUrl()}/settings?instagram=error`, false);
   }
 
   if (!code || !state) {
-    return finishInstagramOAuth(`${getAppUrl()}/settings?instagram=error&message=missing_code`, false);
+    console.error("Instagram OAuth callback missing code or state", { hasCode: Boolean(code), hasState: Boolean(state) });
+    return finishInstagramOAuth(`${getAppUrl()}/settings?instagram=error`, false);
   }
 
   const userId = verifyInstagramOAuthState(state);
   if (!userId) {
-    return finishInstagramOAuth(`${getAppUrl()}/settings?instagram=error&message=invalid_state`, false);
+    console.error("Instagram OAuth callback had invalid state");
+    return finishInstagramOAuth(`${getAppUrl()}/settings?instagram=error`, false);
   }
 
   try {
@@ -72,7 +75,8 @@ export async function GET(request: Request) {
     return finishInstagramOAuth(`${getAppUrl()}/dashboard?${params}`, true);
   } catch (err) {
     const message = err instanceof Error ? err.message : "connection_failed";
-    return finishInstagramOAuth(`${getAppUrl()}/settings?instagram=error&message=${encodeURIComponent(message)}`, false);
+    console.error("Instagram OAuth connection failed", { message });
+    return finishInstagramOAuth(`${getAppUrl()}/settings?instagram=error`, false);
   }
 }
 

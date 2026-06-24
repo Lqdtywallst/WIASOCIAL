@@ -58,7 +58,7 @@ export function InstagramConnectCard() {
       load();
     }
     if (status === "error") {
-      setError(msg || (locale === "es" ? "Error al conectar Instagram" : "Instagram connection failed"));
+      setError(msg || (locale === "es" ? "No se pudo conectar Instagram. Revisa que la cuenta tenga permisos en Meta y vuelve a intentarlo." : "Instagram connection failed. Check that the account has Meta permissions and try again."));
     }
   }, [searchParams, t, locale]);
 
