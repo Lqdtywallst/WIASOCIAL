@@ -54,7 +54,12 @@ export function InstagramConnectBanner() {
       );
       load();
     }
-  }, [searchParams, t]);
+    if (status === "error") {
+      setToast(locale === "es"
+        ? "Meta ha bloqueado el acceso API de Instagram para esta app. Necesitas App Review / Live mode para conectar cuentas reales."
+        : "Meta blocked Instagram API access for this app. App Review / Live mode is required to connect real accounts.");
+    }
+  }, [searchParams, t, locale]);
 
   const handleSync = async () => {
     setSyncing(true);

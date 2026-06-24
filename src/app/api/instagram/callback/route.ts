@@ -76,7 +76,7 @@ export async function GET(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "connection_failed";
     console.error("Instagram OAuth connection failed", { message });
-    return finishInstagramOAuth(`${getAppUrl()}/settings?instagram=error`, false);
+    return finishInstagramOAuth(`${getAppUrl()}/dashboard?instagram=error`, false);
   }
 }
 
