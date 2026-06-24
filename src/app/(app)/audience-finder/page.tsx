@@ -178,20 +178,35 @@ export default function AudienceFinderPage() {
               onChange={(e) => setForm({ ...form, niche: e.target.value })}
               placeholder={es ? "ej. trading, inversión, viajes de lujo" : "e.g. trading, investing, luxury travel"}
             />
+            <p className="-mt-2 text-xs text-muted">
+              {es
+                ? "Ejemplo: trading para principiantes, viajes en pareja, fitness para mujeres, restaurantes premium."
+                : "Example: beginner trading, couples travel, fitness for women, premium restaurants."}
+            </p>
             <Input
               id="goal"
               label={es ? "Objetivo" : "Goal"}
               value={form.goal}
               onChange={(e) => setForm({ ...form, goal: e.target.value })}
             />
+            <p className="-mt-2 text-xs text-muted">
+              {es
+                ? "Ejemplo: conseguir seguidores cualificados, atraer clientes potenciales o encontrar audiencia para mi oferta."
+                : "Example: get qualified followers, attract potential clients, or find an audience for my offer."}
+            </p>
             <Textarea
               id="similarAccounts"
               label={es ? "Cuentas similares o competidores" : "Similar accounts or competitors"}
               value={form.similarAccounts}
               onChange={(e) => setForm({ ...form, similarAccounts: e.target.value })}
-              placeholder="@cuenta1&#10;@cuenta2"
+              placeholder="@"
               rows={3}
             />
+            <p className="-mt-2 text-xs text-muted">
+              {es
+                ? "Ejemplo: pon cuentas que tengan una audiencia parecida a la que quieres atraer."
+                : "Example: add accounts with an audience similar to the one you want to attract."}
+            </p>
             <Input
               id="keywords"
               label={es ? "Palabras clave / hashtags" : "Keywords / hashtags"}
@@ -199,14 +214,24 @@ export default function AudienceFinderPage() {
               onChange={(e) => setForm({ ...form, keywords: e.target.value })}
               placeholder={es ? "trading, bolsa, inversión, libertad financiera" : "trading, stocks, investing, financial freedom"}
             />
+            <p className="-mt-2 text-xs text-muted">
+              {es
+                ? "Ejemplo: temas que suele buscar o comentar tu audiencia: inversión, hoteles, recetas, pérdida de grasa."
+                : "Example: topics your audience searches or comments on: investing, hotels, recipes, fat loss."}
+            </p>
             <Textarea
               id="observedUsers"
               label={es ? "Usuarios observados manualmente (opcional)" : "Manually observed users (optional)"}
               value={form.observedUsers}
               onChange={(e) => setForm({ ...form, observedUsers: e.target.value })}
-              placeholder={es ? "@usuario que comentó en una cuenta similar&#10;@usuario con bio relacionada" : "@user who commented on a similar account&#10;@user with related bio"}
+              placeholder="@"
               rows={4}
             />
+            <p className="-mt-2 text-xs text-muted">
+              {es
+                ? "Ejemplo: usuarios que hayas visto comentando públicamente en cuentas similares o que tengan una bio relacionada."
+                : "Example: users you manually saw commenting publicly on similar accounts or with a related bio."}
+            </p>
             <Textarea
               id="notes"
               label={es ? "Notas de contexto" : "Context notes"}
@@ -215,6 +240,11 @@ export default function AudienceFinderPage() {
               placeholder={es ? "Qué señales viste, qué tipo de seguidores quieres evitar, oferta..." : "Signals you saw, followers to avoid, offer..."}
               rows={3}
             />
+            <p className="-mt-2 text-xs text-muted">
+              {es
+                ? "Ejemplo: busco personas que comenten dudas reales, no cuentas spam; vendo mentorías, asesorías o servicios."
+                : "Example: I want people asking real questions, not spam accounts; I sell mentoring, consulting, or services."}
+            </p>
             <Button onClick={generate} disabled={generating || !form.niche.trim()} className="w-full">
               {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               {es ? "Buscar seguidores potenciales" : "Find potential followers"}
