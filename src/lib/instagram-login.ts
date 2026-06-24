@@ -60,6 +60,7 @@ export function buildInstagramLoginUrl(state: string): string {
     scope: getInstagramLoginScopes(),
     state,
     enable_fb_login: "false",
+    force_reauth: "true",
   });
   return `https://www.instagram.com/oauth/authorize?${params}`;
 }
