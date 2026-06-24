@@ -8,41 +8,48 @@ async function getSessionToken(): Promise<string> {
 }
 
 export async function connectInstagram() {
-  const token = await getSessionToken();
-  const url = `/api/instagram/auth?token=${encodeURIComponent(token)}`;
+  const popup = openInstagramPopup();
+  const cleanup = popup ? listenForInstagramOAuth(popup) : undefined;
 
-  const res = await fetch(url, { redirect: "manual" });
+  try {
+    const status = await fetch("/api/instagram/status").then((r) => r.json()).catch(() => null);
+    if (status && status.ready === false) {
+      throw new Error(status.message ?? "Instagram no configurado.");
+    }
 
-  if (res.status === 503 || res.status === 401) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(
-      (data as { error?: string }).error ??
-        "Instagram no configurado. Añade INSTAGRAM_APP_ID y INSTAGRAM_APP_SECRET en Railway."
-    );
+    const token = await getSessionToken();
+    const url = `/api/instagram/auth?token=${encodeURIComponent(token)}`;
+
+    if (popup) {
+      popup.location.href = url;
+      popup.focus();
+      return;
+    }
+
+    window.location.href = url;
+  } catch (error) {
+    cleanup?.();
+    popup?.close();
+    throw error;
   }
-
-  const location = res.headers.get("Location");
-  if (location) {
-    openInstagramOAuth(location);
-    return;
-  }
-
-  // Fallback for browsers that follow redirects differently
-  openInstagramOAuth(url);
 }
 
-function openInstagramOAuth(url: string) {
+function openInstagramPopup() {
   const popup = window.open(
-    url,
+    "about:blank",
     "wia-instagram-connect",
     "width=520,height=720,menubar=no,toolbar=no,location=yes,status=no"
   );
 
-  if (!popup) {
-    window.location.href = url;
-    return;
+  if (popup) {
+    popup.document.write("<p style='font-family: system-ui, sans-serif; padding: 24px;'>Abriendo Instagram...</p>");
+    popup.document.close();
   }
 
+  return popup;
+}
+
+function listenForInstagramOAuth(popup: Window) {
   const handler = (event: MessageEvent) => {
     if (event.origin !== window.location.origin) return;
     const data = event.data as { type?: string; redirectTo?: string };
@@ -54,7 +61,7 @@ function openInstagramOAuth(url: string) {
   };
 
   window.addEventListener("message", handler);
-  popup.focus();
+  return () => window.removeEventListener("message", handler);
 }
 
 export async function syncInstagramMetrics() {
