@@ -149,6 +149,10 @@ export function InstagramConnectCard() {
               {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               {t.instagram.syncMetrics}
             </Button>
+            <Button variant="secondary" onClick={handleConnect} disabled={connecting}>
+              {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <InstagramBrandIcon className="h-4 w-4" />}
+              {t.instagram.switchAccount}
+            </Button>
             <Button variant="ghost" onClick={handleDisconnect}>
               <Unplug className="h-4 w-4" />
               {t.instagram.disconnect}

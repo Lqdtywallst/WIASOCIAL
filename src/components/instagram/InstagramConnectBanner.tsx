@@ -22,6 +22,7 @@ export function InstagramConnectBanner() {
   const [connection, setConnection] = useState<Awaited<ReturnType<typeof fetchInstagramConnection>>>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [toast, setToast] = useState("");
 
   const configured = isInstagramLoginConfiguredPublic();
@@ -70,6 +71,18 @@ export function InstagramConnectBanner() {
     }
   };
 
+  const handleConnect = async () => {
+    setConnecting(true);
+    setToast("");
+    try {
+      await connectInstagram();
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : "Error");
+    } finally {
+      setConnecting(false);
+    }
+  };
+
   if (loading) {
     return (
       <Card className="flex h-24 items-center justify-center">
@@ -106,6 +119,10 @@ export function InstagramConnectBanner() {
               {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               {t.instagram.sync}
             </Button>
+            <Button onClick={handleConnect} disabled={connecting} variant="secondary" size="sm">
+              {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <InstagramBrandIcon className="h-4 w-4" />}
+              {t.instagram.switchAccount}
+            </Button>
             <Link href="/instagram-data">
               <Button variant="secondary" size="sm">{t.instagramData.title}</Button>
             </Link>
@@ -137,14 +154,8 @@ export function InstagramConnectBanner() {
             )}
           </div>
         </div>
-        <Button onClick={async () => {
-          try {
-            await connectInstagram();
-          } catch (e) {
-            setToast(e instanceof Error ? e.message : "Error");
-          }
-        }}>
-          <InstagramBrandIcon className="h-4 w-4" />
+        <Button onClick={handleConnect} disabled={connecting}>
+          {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <InstagramBrandIcon className="h-4 w-4" />}
           {t.instagram.connect}
         </Button>
       </div>
